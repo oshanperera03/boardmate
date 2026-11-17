@@ -2,6 +2,7 @@ import { getApp, getApps, initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getFunctions } from 'firebase/functions'
+import { getStorage, type FirebaseStorage } from 'firebase/storage'
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,3 +19,4 @@ const app = getApps().length ? getApp() : initializeApp(config)
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const functions = getFunctions(app)
+export const storage: FirebaseStorage | null = config.storageBucket ? getStorage(app) : null

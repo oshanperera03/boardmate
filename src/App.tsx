@@ -3,7 +3,17 @@ import { ProtectedRoute, AuthenticatedRedirect } from './components/auth/Protect
 import { AppLayout } from './components/layouts/AppLayout'
 import { AdminDashboard, OwnerDetailsPage, OwnerRequestsPage, OwnersListPage, RegisteredUsersPage } from './pages/AdminPages'
 import { ForgotPasswordPage, LandingPage, LoginPage, RegistrationPage } from './pages/PublicPages'
-import { AccountSuspendedPage, OwnerDashboard, OwnerPendingPage, OwnerStatusPage, ProfilePage, StudentDashboard, StudentSettingsPage } from './pages/RolePages'
+import {
+  AccountSuspendedPage,
+  OwnerDashboard,
+  OwnerPendingPage,
+  OwnerPropertiesPage,
+  OwnerPropertyFormPage,
+  OwnerStatusPage,
+  ProfilePage,
+  StudentDashboard,
+  StudentSettingsPage,
+} from './pages/RolePages'
 
 function NotFound() {
   return (
@@ -48,6 +58,8 @@ export default function App() {
       <Route element={<ProtectedRoute role="owner" ownerGate="approved" />}>
         <Route element={<AppLayout />}>
           <Route path="/owner" element={<OwnerDashboard />} />
+          <Route path="/owner/properties" element={<OwnerPropertiesPage />} />
+          <Route path="/owner/properties/new" element={<OwnerPropertyFormPage />} />
           <Route path="/owner/profile" element={<ProfilePage owner />} />
         </Route>
       </Route>

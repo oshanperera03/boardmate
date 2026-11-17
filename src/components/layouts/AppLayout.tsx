@@ -42,7 +42,9 @@ export function AppLayout() {
       ? profile?.accountStatus === 'active' && profile.approvalStatus === 'approved'
         ? [
           { to: '/owner', label: 'Dashboard', icon: LayoutDashboard, end: true },
-          { to: '/owner/profile', label: 'My profile', icon: CircleUserRound },
+          { to: '/owner/properties/new', label: 'Add New Property', icon: Building2 },
+          { to: '/owner/properties', label: 'My Properties', icon: ClipboardList },
+          { to: '/owner/profile', label: 'Profile', icon: CircleUserRound },
           { to: '/owner/status', label: 'Account status', icon: Shield },
           ]
         : profile?.accountStatus === 'active' && profile.approvalStatus === 'pending'
