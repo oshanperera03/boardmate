@@ -3,6 +3,8 @@ import { ProtectedRoute, AuthenticatedRedirect } from './components/auth/Protect
 import { AppLayout } from './components/layouts/AppLayout'
 import { AdminDashboard, OwnerDetailsPage, OwnerRequestsPage, OwnersListPage, PropertyRequestsPage, RegisteredUsersPage } from './pages/AdminPages'
 import { ForgotPasswordPage, LandingPage, LoginPage, RegistrationPage } from './pages/PublicPages'
+import { OwnerRoomsPage, RoomDetailsPage, RoomFormPage } from './pages/RoomPages'
+import { StudentPropertyDetailsPage, StudentSearchPage } from './pages/DiscoveryPages'
 import {
   AccountSuspendedPage,
   OwnerDashboard,
@@ -40,6 +42,8 @@ export default function App() {
       <Route element={<ProtectedRoute role="student" />}>
         <Route element={<AppLayout />}>
           <Route path="/student" element={<StudentDashboard />} />
+          <Route path="/student/search" element={<StudentSearchPage />} />
+          <Route path="/student/properties/:propertyId" element={<StudentPropertyDetailsPage />} />
           <Route path="/student/profile" element={<ProfilePage />} />
           <Route path="/student/settings" element={<StudentSettingsPage />} />
         </Route>
@@ -60,6 +64,10 @@ export default function App() {
           <Route path="/owner" element={<OwnerDashboard />} />
           <Route path="/owner/properties" element={<OwnerPropertiesPage />} />
           <Route path="/owner/properties/new" element={<OwnerPropertyFormPage />} />
+          <Route path="/owner/rooms" element={<OwnerRoomsPage />} />
+          <Route path="/owner/rooms/new" element={<RoomFormPage />} />
+          <Route path="/owner/rooms/:roomId" element={<RoomDetailsPage />} />
+          <Route path="/owner/rooms/:roomId/edit" element={<RoomFormPage />} />
           <Route path="/owner/profile" element={<ProfilePage owner />} />
         </Route>
       </Route>

@@ -15,6 +15,25 @@
         { "fieldPath": "ownerId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "rooms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "availabilityStatus", "order": "ASCENDING" },
+        { "fieldPath": "availableSpaces", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "rooms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "propertyId", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "availabilityStatus", "order": "ASCENDING" },
+        { "fieldPath": "availableSpaces", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

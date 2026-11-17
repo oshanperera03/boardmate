@@ -45,6 +45,7 @@ export function AppLayout() {
           { to: '/owner', label: 'Dashboard', icon: LayoutDashboard, end: true },
           { to: '/owner/properties/new', label: 'Add New Property', icon: Building2 },
           { to: '/owner/properties', label: 'My Properties', icon: ClipboardList },
+          { to: '/owner/rooms', label: 'Room management', icon: Building2 },
           { to: '/owner/profile', label: 'Profile', icon: CircleUserRound },
           { to: '/owner/status', label: 'Account status', icon: Shield },
           ]
@@ -56,6 +57,7 @@ export function AppLayout() {
           : [{ to: '/owner/status', label: 'Account status', icon: Shield }]
       : [
           { to: '/student', label: 'Dashboard', icon: LayoutDashboard, end: true },
+          { to: '/student/search', label: 'Find accommodation', icon: Building2 },
           { to: '/student/profile', label: 'My profile', icon: CircleUserRound },
           { to: '/student/settings', label: 'Account settings', icon: Shield },
         ]

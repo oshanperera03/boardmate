@@ -15,6 +15,7 @@ import { PageTitle, Alert, Field, primaryButtonClass, secondaryButtonClass, Stat
 import { useAuth } from '../contexts/AuthContext'
 import { logout, requestPasswordReset } from '../services/auth/authService'
 import { createProperty, getOwnerProperties, getOwnerPropertyStats } from '../services/properties/propertyService'
+import { getOwnerRooms } from '../services/rooms/roomService'
 import { updateOwnProfile } from '../services/users/userService'
 import type { FacilityOption, GenderPolicy, PreferredContactMethod, PropertyDocument, PropertyType, RoomArrangement } from '../types/property'
 import { getFirebaseErrorMessage, sriLankanPhonePattern } from '../utils/validation'
@@ -82,14 +83,14 @@ export function StudentDashboard() {
   const { profile } = useAuth()
   return (
     <>
-      <PageTitle eyebrow="Student workspace" title={`Welcome, ${profile?.fullName.split(' ')[0] || 'there'}!`} description="Your student account is ready. We’re preparing a simpler way to find your next place to call home." />
+      <PageTitle eyebrow="Student workspace" title={`Welcome, ${profile?.fullName.split(' ')[0] || 'there'}!`} description="Discover approved boarding properties and rooms with available spaces." />
       <section className="overflow-hidden rounded-2xl border border-blue-100 bg-white">
         <div className="grid gap-8 p-6 sm:p-9 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#183b63]"><Sparkles size={14} /> Coming in a future release</span>
-            <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">Your accommodation journey starts here.</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">Property discovery is not available yet. In the meantime, complete your profile so your account is ready for what’s next.</p>
-            <Link to="/student/profile" className={`${primaryButtonClass} mt-5`}>Review your profile <ArrowRight size={16} /></Link>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#183b63]"><Sparkles size={14} /> Verified listings</span>
+            <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">Find a place that fits your student life.</h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">Search by campus, budget, room type, gender policy, facilities and availability.</p>
+            <Link to="/student/search" className={`${primaryButtonClass} mt-5`}>Find accommodation <ArrowRight size={16} /></Link>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <div className="flex items-center gap-3 rounded-xl bg-[#f7f9fc] p-4"><span className="grid size-10 place-items-center rounded-lg bg-white text-[#2b65a0]"><BadgeCheck size={19} /></span><div><p className="text-sm font-semibold text-slate-800">Account verified</p><p className="text-xs text-slate-500">Your email is confirmed</p></div></div>
@@ -193,12 +194,22 @@ export function StudentSettingsPage() {
 export function OwnerDashboard() {
   const { profile } = useAuth()
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 })
+  const [roomStats, setRoomStats] = useState({ total: 0, available: 0, partiallyAvailable: 0, occupied: 0, temporarilyUnavailable: 0 })
 
   useEffect(() => {
     if (!profile?.uid) return
     void getOwnerPropertyStats(profile.uid)
       .then(setStats)
       .catch(() => setStats({ total: 0, pending: 0, approved: 0, rejected: 0 }))
+    void getOwnerRooms(profile.uid)
+      .then((rooms) => setRoomStats({
+        total: rooms.length,
+        available: rooms.filter((room) => room.availabilityStatus === 'available').length,
+        partiallyAvailable: rooms.filter((room) => room.availabilityStatus === 'partially_available').length,
+        occupied: rooms.filter((room) => room.availabilityStatus === 'occupied').length,
+        temporarilyUnavailable: rooms.filter((room) => room.availabilityStatus === 'temporarily_unavailable').length,
+      }))
+      .catch(() => setRoomStats({ total: 0, available: 0, partiallyAvailable: 0, occupied: 0, temporarilyUnavailable: 0 }))
   }, [profile?.uid])
 
   return (
@@ -224,6 +235,20 @@ export function OwnerDashboard() {
         </div>
       </div>
 
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 sm:p-7">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 className="text-lg font-bold text-slate-900">Room management</h2><p className="mt-1 text-sm text-slate-500">Track room capacity and availability across your properties.</p></div>
+          <Link to="/owner/rooms" className={secondaryButtonClass}>Manage rooms</Link>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Total rooms</p><p className="mt-2 text-2xl font-bold text-slate-900">{roomStats.total}</p></div>
+          <div className="rounded-xl bg-emerald-50 p-4"><p className="text-xs text-emerald-700">Available</p><p className="mt-2 text-2xl font-bold text-emerald-700">{roomStats.available}</p></div>
+          <div className="rounded-xl bg-amber-50 p-4"><p className="text-xs text-amber-700">Partially available</p><p className="mt-2 text-2xl font-bold text-amber-700">{roomStats.partiallyAvailable}</p></div>
+          <div className="rounded-xl bg-rose-50 p-4"><p className="text-xs text-rose-700">Occupied</p><p className="mt-2 text-2xl font-bold text-rose-700">{roomStats.occupied}</p></div>
+          <div className="rounded-xl bg-slate-100 p-4"><p className="text-xs text-slate-600">Temporarily unavailable</p><p className="mt-2 text-2xl font-bold text-slate-700">{roomStats.temporarilyUnavailable}</p></div>
+        </div>
+      </section>
+
       <div className="mt-6 rounded-2xl border border-emerald-100 bg-white p-6 sm:p-9">
         <div className="flex max-w-2xl items-start gap-4">
           <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><BadgeCheck size={24} /></span>
@@ -232,6 +257,7 @@ export function OwnerDashboard() {
             <p className="mt-2 text-sm leading-6 text-slate-500">You can now register boarding properties, review submissions, and manage your active listings.</p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link className={primaryButtonClass} to="/owner/properties/new">Add New Property <Plus size={16} /></Link>
+              <Link className={secondaryButtonClass} to="/owner/rooms">Manage rooms</Link>
               <Link className={secondaryButtonClass} to="/owner/properties">My Properties</Link>
             </div>
           </div>

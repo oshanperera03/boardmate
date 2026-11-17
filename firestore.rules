@@ -60,8 +60,13 @@ service cloud.firestore {
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.approvalStatus == 'pending';
 
-      allow get, list: if signedIn()
-        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow get: if isAdmin()
+        || (signedIn() && resource.data.ownerId == request.auth.uid)
+        || (signedIn() && resource.data.approvalStatus == 'approved');
+
+      allow list: if isAdmin()
+        || (signedIn() && resource.data.ownerId == request.auth.uid)
+        || (signedIn() && resource.data.approvalStatus == 'approved');
 
       allow update: if isAdmin()
         && resource.data.approvalStatus == 'pending'
@@ -75,6 +80,61 @@ service cloud.firestore {
             && request.resource.data.rejectionReason.size() <= 1000));
 
       allow delete: if false;
+    }
+
+    match /rooms/{roomId} {
+      function approvedOwner() {
+        return signedIn()
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner'
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approvalStatus == 'approved'
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus == 'active';
+      }
+
+      function ownedProperty(propertyId) {
+        return get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+      }
+
+      function validRoom(data) {
+        return data.ownerId is string
+          && data.propertyId is string
+          && data.roomName is string
+          && data.maximumOccupants is int
+          && data.maximumOccupants > 0
+          && data.currentOccupants is int
+          && data.currentOccupants >= 0
+          && data.currentOccupants <= data.maximumOccupants
+          && data.availableSpaces is int
+          && data.availableSpaces == data.maximumOccupants - data.currentOccupants
+          && data.availabilityStatus in ['available', 'partially_available', 'occupied', 'temporarily_unavailable']
+          && (data.availabilityStatus == 'temporarily_unavailable'
+            || (data.currentOccupants == 0 && data.availabilityStatus == 'available')
+            || (data.currentOccupants > 0 && data.availableSpaces > 0 && data.availabilityStatus == 'partially_available')
+            || (data.availableSpaces == 0 && data.availabilityStatus == 'occupied'));
+      }
+
+      allow create: if approvedOwner()
+        && request.resource.data.ownerId == request.auth.uid
+        && ownedProperty(request.resource.data.propertyId)
+        && validRoom(request.resource.data);
+
+      function discoverableRoom() {
+        return signedIn()
+          && resource.data.availableSpaces > 0;
+      }
+
+      allow get, list: if isAdmin()
+        || (approvedOwner() && resource.data.ownerId == request.auth.uid)
+        || discoverableRoom();
+
+      allow update: if approvedOwner()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.propertyId == resource.data.propertyId
+        && ownedProperty(request.resource.data.propertyId)
+        && validRoom(request.resource.data);
+
+      allow delete: if (isAdmin() && resource.data.currentOccupants == 0)
+        || (approvedOwner() && resource.data.ownerId == request.auth.uid && resource.data.currentOccupants == 0);
     }
   }
 }
