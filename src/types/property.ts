@@ -26,8 +26,7 @@ export interface PropertyLocation {
   city: string
   address: string
   nearbyCampus: string
-  latitude: number
-  longitude: number
+  mapLink: string
 }
 
 export interface PropertyContact {

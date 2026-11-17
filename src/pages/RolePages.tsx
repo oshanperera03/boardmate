@@ -1,14 +1,12 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import {
   ArrowRight,
   BadgeCheck,
   BookOpen,
   Building2,
   Camera,
-  Check,
   Clock3,
   Mail,
-  MapPin,
   Plus,
   ShieldAlert,
   Sparkles,
@@ -69,8 +67,7 @@ const initialForm = {
   city: '',
   address: '',
   nearbyCampus: '',
-  latitude: 6.9271,
-  longitude: 79.8612,
+  mapLink: '',
   genderPolicy: 'boys' as GenderPolicy,
   roomArrangement: 'separate_rooms' as RoomArrangement,
   separateFloors: false,
@@ -82,95 +79,6 @@ const initialForm = {
   contactPhone: '',
   whatsapp: '',
   preferredMethod: 'phone' as PreferredContactMethod,
-}
-
-const steps = ['Basic info', 'Location', 'Gender & rooms', 'Facilities', 'Images', 'Contact', 'Review']
-
-let leafletLoader: Promise<void> | null = null
-
-function ensureLeaflet(): Promise<void> {
-  if (typeof window === 'undefined') {
-    return Promise.resolve()
-  }
-
-  if ((window as any).L) {
-    return Promise.resolve()
-  }
-
-  if (!leafletLoader) {
-    leafletLoader = new Promise((resolve, reject) => {
-      const style = document.querySelector<HTMLLinkElement>('link[data-leaflet-loader="true"]') || document.createElement('link')
-      if (!style.dataset.leafletLoader) {
-        style.rel = 'stylesheet'
-        style.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-        style.dataset.leafletLoader = 'true'
-        document.head.appendChild(style)
-      }
-
-      const script = document.querySelector<HTMLScriptElement>('script[data-leaflet-loader="true"]') || document.createElement('script')
-      if (!script.dataset.leafletLoader) {
-        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-        script.async = true
-        script.dataset.leafletLoader = 'true'
-        script.onload = () => resolve()
-        script.onerror = () => reject(new Error('Unable to load Leaflet.'))
-        document.body.appendChild(script)
-      } else {
-        script.addEventListener('load', () => resolve(), { once: true })
-        script.addEventListener('error', () => reject(new Error('Unable to load Leaflet.')), { once: true })
-      }
-    })
-  }
-
-  return leafletLoader
-}
-
-function PropertyLocationMap({
-  latitude,
-  longitude,
-  onSelect,
-}: {
-  latitude: number
-  longitude: number
-  onSelect: (latitude: number, longitude: number) => void
-}) {
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<any>(null)
-
-  useEffect(() => {
-    let isActive = true
-
-    ensureLeaflet()
-      .then(() => {
-        if (!isActive || !containerRef.current || !(window as any).L) {
-          return
-        }
-
-        const L = (window as any).L
-        const map = L.map(containerRef.current).setView([latitude, longitude], 12)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        }).addTo(map)
-
-        const marker = L.marker([latitude, longitude]).addTo(map)
-        map.on('click', (event: { latlng: { lat: number; lng: number } }) => {
-          const nextPoint = { lat: event.latlng.lat, lng: event.latlng.lng }
-          marker.setLatLng(nextPoint)
-          onSelect(nextPoint.lat, nextPoint.lng)
-        })
-
-        mapRef.current = map
-      })
-      .catch(() => undefined)
-
-    return () => {
-      isActive = false
-      mapRef.current?.remove()
-      mapRef.current = null
-    }
-  }, [latitude, longitude, onSelect])
-
-  return <div ref={containerRef} className="h-[320px] w-full overflow-hidden rounded-2xl border border-slate-200" />
 }
 
 export function StudentDashboard() {
@@ -378,7 +286,6 @@ export function OwnerStatusPage() {
 export function OwnerPropertyFormPage() {
   const { profile } = useAuth()
   const navigate = useNavigate()
-  const [currentStep, setCurrentStep] = useState(0)
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -433,36 +340,26 @@ export function OwnerPropertyFormPage() {
     setErrors((previous) => ({ ...previous, images: '' }))
   }
 
-  function validateCurrentStep(stepIndex: number) {
+  function validateForm() {
     const nextErrors: Record<string, string> = {}
 
-    if (stepIndex === 0) {
-      if (!form.propertyName.trim()) nextErrors.propertyName = 'Property name is required.'
-      if (!form.description.trim()) nextErrors.description = 'Property description is required.'
+    if (!form.propertyName.trim()) nextErrors.propertyName = 'Property name is required.'
+    if (!form.description.trim()) nextErrors.description = 'Property description is required.'
+    if (!form.province.trim()) nextErrors.province = 'Province is required.'
+    if (!form.district.trim()) nextErrors.district = 'District is required.'
+    if (!form.city.trim()) nextErrors.city = 'City or town is required.'
+    if (!form.address.trim()) nextErrors.address = 'Full address is required.'
+    if (!form.nearbyCampus.trim()) nextErrors.nearbyCampus = 'Nearest university or campus is required.'
+    if (!form.mapLink.trim()) nextErrors.mapLink = 'Map link is required.'
+    if (!form.genderPolicy) nextErrors.genderPolicy = 'Select a gender policy.'
+    if (!form.roomArrangement) nextErrors.roomArrangement = 'Select a room arrangement.'
+    if (!form.contactName.trim()) nextErrors.contactName = 'Contact person name is required.'
+    if (!form.contactPhone.trim()) nextErrors.contactPhone = 'Phone number is required.'
+    else if (!sriLankanPhonePattern.test(form.contactPhone.replace(/[\s()-]/g, ''))) {
+      nextErrors.contactPhone = 'Enter a valid Sri Lankan mobile number.'
     }
-
-    if (stepIndex === 1) {
-      if (!form.province.trim()) nextErrors.province = 'Province is required.'
-      if (!form.district.trim()) nextErrors.district = 'District is required.'
-      if (!form.city.trim()) nextErrors.city = 'City or town is required.'
-      if (!form.address.trim()) nextErrors.address = 'Full address is required.'
-      if (!form.nearbyCampus.trim()) nextErrors.nearbyCampus = 'Nearest university or campus is required.'
-    }
-
-    if (stepIndex === 2) {
-      if (!form.genderPolicy) nextErrors.genderPolicy = 'Select a gender policy.'
-      if (!form.roomArrangement) nextErrors.roomArrangement = 'Select a room arrangement.'
-    }
-
-    if (stepIndex === 5) {
-      if (!form.contactName.trim()) nextErrors.contactName = 'Contact person name is required.'
-      if (!form.contactPhone.trim()) nextErrors.contactPhone = 'Phone number is required.'
-      else if (!sriLankanPhonePattern.test(form.contactPhone.replace(/[\s()-]/g, ''))) {
-        nextErrors.contactPhone = 'Enter a valid Sri Lankan mobile number.'
-      }
-      if (form.whatsapp.trim() && !sriLankanPhonePattern.test(form.whatsapp.replace(/[\s()-]/g, ''))) {
-        nextErrors.whatsapp = 'Enter a valid WhatsApp number.'
-      }
+    if (form.whatsapp.trim() && !sriLankanPhonePattern.test(form.whatsapp.replace(/[\s()-]/g, ''))) {
+      nextErrors.whatsapp = 'Enter a valid WhatsApp number.'
     }
 
     setErrors(nextErrors)
@@ -478,24 +375,7 @@ export function OwnerPropertyFormPage() {
     const cleanPhone = form.contactPhone.replace(/[\s()-]/g, '')
     const cleanWhatsApp = form.whatsapp.replace(/[\s()-]/g, '')
 
-    const baseErrors: Record<string, string> = {}
-    if (!form.propertyName.trim()) baseErrors.propertyName = 'Property name is required.'
-    if (!form.description.trim()) baseErrors.description = 'Property description is required.'
-    if (!form.province.trim()) baseErrors.province = 'Province is required.'
-    if (!form.district.trim()) baseErrors.district = 'District is required.'
-    if (!form.city.trim()) baseErrors.city = 'City or town is required.'
-    if (!form.address.trim()) baseErrors.address = 'Full address is required.'
-    if (!form.nearbyCampus.trim()) baseErrors.nearbyCampus = 'Nearest university or campus is required.'
-    if (!form.genderPolicy) baseErrors.genderPolicy = 'Select a gender policy.'
-    if (!form.roomArrangement) baseErrors.roomArrangement = 'Select a room arrangement.'
-    if (!form.contactName.trim()) baseErrors.contactName = 'Contact person name is required.'
-    if (!cleanPhone || !sriLankanPhonePattern.test(cleanPhone)) baseErrors.contactPhone = 'Enter a valid Sri Lankan mobile number.'
-    if (form.whatsapp.trim() && !sriLankanPhonePattern.test(cleanWhatsApp)) baseErrors.whatsapp = 'Enter a valid WhatsApp number.'
-
-    if (Object.keys(baseErrors).length > 0) {
-      setErrors(baseErrors)
-      return
-    }
+    if (!validateForm()) return
 
     setSubmitting(true)
 
@@ -522,8 +402,7 @@ export function OwnerPropertyFormPage() {
           city: form.city.trim(),
           address: form.address.trim(),
           nearbyCampus: form.nearbyCampus.trim(),
-          latitude: Number(form.latitude),
-          longitude: Number(form.longitude),
+          mapLink: form.mapLink.trim(),
         },
         genderPolicy: form.genderPolicy,
         roomArrangement: form.roomArrangement,
@@ -550,8 +429,8 @@ export function OwnerPropertyFormPage() {
     }
   }
 
-  const renderStepContent = () => {
-    switch (currentStep) {
+  const renderStepContent = (stepIndex: number) => {
+    switch (stepIndex) {
       case 0:
         return (
           <div className="grid gap-5">
@@ -562,13 +441,19 @@ export function OwnerPropertyFormPage() {
               <textarea value={form.description} onChange={(event) => updateField('description', event.target.value)} rows={5} className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" required />
               {errors.description && <p className="text-sm text-rose-600">{errors.description}</p>}
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <label className="text-sm font-semibold text-slate-700">Property type</label>
-              <select value={form.propertyType} onChange={(event) => updateField('propertyType', event.target.value as PropertyType)} className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
-                {propertyTypeOptions.map((type) => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
-                ))}
-              </select>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {propertyTypeOptions.map((type) => {
+                  const selected = form.propertyType === type.value
+                  return (
+                    <label key={type.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium transition ${selected ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-100'}`}>
+                      <input type="radio" name="propertyType" value={type.value} checked={selected} onChange={() => updateField('propertyType', type.value)} className="size-4 accent-[#183b63]" />
+                      <span>{type.label}</span>
+                    </label>
+                  )
+                })}
+              </div>
             </div>
           </div>
         )
@@ -583,21 +468,13 @@ export function OwnerPropertyFormPage() {
               <Field label="City or town" value={form.city} onChange={(event) => updateField('city', event.target.value)} required />
               <Field label="Nearest university or campus" value={form.nearbyCampus} onChange={(event) => updateField('nearbyCampus', event.target.value)} required />
             </div>
-            <div className="grid gap-1.5">
-              <label className="text-sm font-semibold text-slate-700">Full address</label>
-              <textarea value={form.address} onChange={(event) => updateField('address', event.target.value)} rows={4} className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" required />
+            <div>
+              <Field label="Full address" value={form.address} onChange={(event) => updateField('address', event.target.value)} required />
               {errors.address && <p className="text-sm text-rose-600">{errors.address}</p>}
             </div>
-            <div className="grid gap-5 md:grid-cols-2">
-              <Field label="Latitude" type="number" step="0.0001" value={form.latitude} onChange={(event) => updateField('latitude', Number(event.target.value))} />
-              <Field label="Longitude" type="number" step="0.0001" value={form.longitude} onChange={(event) => updateField('longitude', Number(event.target.value))} />
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700"><MapPin size={16} /> Select on map</div>
-              <PropertyLocationMap latitude={form.latitude} longitude={form.longitude} onSelect={(latitude, longitude) => {
-                updateField('latitude', latitude)
-                updateField('longitude', longitude)
-              }} />
+            <div>
+              <Field label="Map link" type="url" placeholder="https://maps.google.com/..." value={form.mapLink} onChange={(event) => updateField('mapLink', event.target.value)} required hint="Paste a Google Maps or other map link for this property." />
+              {errors.mapLink && <p className="mt-1.5 text-sm text-rose-600">{errors.mapLink}</p>}
             </div>
           </div>
         )
@@ -608,19 +485,26 @@ export function OwnerPropertyFormPage() {
               <label className="text-sm font-semibold text-slate-700">Gender policy</label>
               <div className="grid gap-3 sm:grid-cols-3">
                 {genderOptions.map((option) => (
-                  <button key={option.value} type="button" onClick={() => updateField('genderPolicy', option.value)} className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition ${form.genderPolicy === option.value ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-700'}`}>
-                    {option.label}
-                  </button>
+                  <label key={option.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium transition ${form.genderPolicy === option.value ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-100'}`}>
+                    <input type="radio" name="genderPolicy" value={option.value} checked={form.genderPolicy === option.value} onChange={() => updateField('genderPolicy', option.value)} className="size-4 accent-[#183b63]" />
+                    <span>{option.label}</span>
+                  </label>
                 ))}
               </div>
             </div>
             <div className="grid gap-1.5">
               <label className="text-sm font-semibold text-slate-700">Room arrangement</label>
-              <select value={form.roomArrangement} onChange={(event) => updateField('roomArrangement', event.target.value as RoomArrangement)} className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
-                {roomArrangementOptions.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {roomArrangementOptions.map((option) => {
+                  const selected = form.roomArrangement === option.value
+                  return (
+                    <label key={option.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium transition ${selected ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-100'}`}>
+                      <input type="radio" name="roomArrangement" value={option.value} checked={selected} onChange={() => updateField('roomArrangement', option.value)} className="size-4 accent-[#183b63]" />
+                      <span>{option.label}</span>
+                    </label>
+                  )
+                })}
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700"><input type="checkbox" checked={form.separateFloors} onChange={(event) => updateField('separateFloors', event.target.checked)} /> Separate floors available</label>
@@ -635,15 +519,15 @@ export function OwnerPropertyFormPage() {
             {facilityOptions.map((facility) => {
               const selected = form.facilities.includes(facility.value)
               return (
-                <button key={facility.value} type="button" onClick={() => {
-                  const next = selected
-                    ? form.facilities.filter((item) => item !== facility.value)
-                    : [...form.facilities, facility.value]
-                  updateField('facilities', next)
-                }} className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition ${selected ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-700'}`}>
+                <label key={facility.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition ${selected ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-100'}`}>
+                  <input type="checkbox" checked={selected} onChange={() => {
+                    const next = selected
+                      ? form.facilities.filter((item) => item !== facility.value)
+                      : [...form.facilities, facility.value]
+                    updateField('facilities', next)
+                  }} className="size-4 rounded accent-[#183b63]" />
                   <span>{facility.label}</span>
-                  {selected && <Check size={16} />}
-                </button>
+                </label>
               )
             })}
           </div>
@@ -711,21 +595,6 @@ export function OwnerPropertyFormPage() {
             </div>
           </div>
         )
-      case 6:
-        return (
-          <div className="grid gap-5">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-800">{form.propertyName || 'Property name not set'}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{form.description}</p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs uppercase tracking-wider text-slate-500">Property type</p><p className="mt-2 font-semibold text-slate-800">{propertyTypeOptions.find((item) => item.value === form.propertyType)?.label}</p></div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs uppercase tracking-wider text-slate-500">Gender policy</p><p className="mt-2 font-semibold text-slate-800">{genderOptions.find((item) => item.value === form.genderPolicy)?.label}</p></div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs uppercase tracking-wider text-slate-500">Location</p><p className="mt-2 font-semibold text-slate-800">{form.city}, {form.district}</p></div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs uppercase tracking-wider text-slate-500">Contact</p><p className="mt-2 font-semibold text-slate-800">{form.contactName}</p></div>
-            </div>
-          </div>
-        )
       default:
         return null
     }
@@ -733,34 +602,20 @@ export function OwnerPropertyFormPage() {
 
   return (
     <>
-      <PageTitle eyebrow="Owner workspace" title="Add new property" description="Register a boarding property in a few guided steps. The property will be submitted with a pending approval status." />
+      <PageTitle eyebrow="Owner workspace" title="Add new property" description="Enter your property details below. The property will be submitted with a pending approval status." />
 
       <div className="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-5 sm:p-8">
-        <div className="mb-8 flex flex-wrap gap-2">
-          {steps.map((step, index) => (
-            <div key={step} className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${index === currentStep ? 'bg-[#183b63] text-white' : 'bg-slate-100 text-slate-500'}`}>
-              <span className="grid size-5 place-items-center rounded-full bg-white/20 text-[10px]">{index + 1}</span>
-              {step}
-            </div>
-          ))}
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-6">
           {errors.submit && <Alert>{errors.submit}</Alert>}
-          {renderStepContent()}
-
-          <div className="flex flex-wrap justify-between gap-3 border-t border-slate-200 pt-6">
-            <button type="button" className={secondaryButtonClass} onClick={() => setCurrentStep((previous) => Math.max(previous - 1, 0))} disabled={currentStep === 0}>Previous</button>
-
-            {currentStep < steps.length - 1 ? (
-              <button type="button" className={primaryButtonClass} onClick={() => {
-                if (validateCurrentStep(currentStep)) {
-                  setCurrentStep((previous) => previous + 1)
-                }
-              }}>Next</button>
-            ) : (
-              <button type="submit" className={primaryButtonClass} disabled={submitting}>{submitting ? 'Submitting…' : 'Submit Property'}</button>
-            )}
+          <div className="grid gap-8">
+            {[0, 1, 2, 3, 4, 5].map((stepIndex) => (
+              <section key={stepIndex} className="border-b border-slate-200 pb-8 last:border-b-0 last:pb-0">
+                {renderStepContent(stepIndex)}
+              </section>
+            ))}
+          </div>
+          <div className="flex justify-end border-t border-slate-200 pt-6">
+            <button type="submit" className={primaryButtonClass} disabled={submitting}>{submitting ? 'Submitting…' : 'Submit Property'}</button>
           </div>
         </form>
       </div>

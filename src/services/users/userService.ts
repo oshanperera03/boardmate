@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -61,17 +62,23 @@ export async function getOwner(uid: string): Promise<UserProfile | null> {
   return user?.role === 'owner' ? user : null
 }
 
-const reviewOwnerCall = httpsCallable<
-  { uid: string; decision: 'approve' | 'reject'; reason?: string },
-  { success: boolean }
->(functions, 'reviewOwner')
-
 export async function reviewOwner(
   uid: string,
   decision: 'approve' | 'reject',
   reason?: string,
 ): Promise<void> {
-  await reviewOwnerCall({ uid, decision, reason })
+  const normalizedReason = reason?.trim()
+  if (decision === 'reject' && !normalizedReason) {
+    throw new Error('A reason is required when rejecting an owner.')
+  }
+  if (normalizedReason && normalizedReason.length > 1000) {
+    throw new Error('The rejection reason is too long.')
+  }
+  await updateDoc(doc(db, 'users', uid), {
+    approvalStatus: decision === 'approve' ? 'approved' : 'rejected',
+    rejectionReason: decision === 'reject' ? normalizedReason : deleteField(),
+    updatedAt: serverTimestamp(),
+  })
 }
 
 const suspendOwnerCall = httpsCallable<{ uid: string }, { success: boolean }>(

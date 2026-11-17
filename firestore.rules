@@ -36,7 +36,21 @@ service cloud.firestore {
         && request.resource.data.email == resource.data.email
         && request.resource.data.role == resource.data.role
         && request.resource.data.approvalStatus == resource.data.approvalStatus
-        && request.resource.data.accountStatus == resource.data.accountStatus;
+        && request.resource.data.accountStatus == resource.data.accountStatus
+        || isAdmin()
+        && resource.data.role == 'owner'
+        && resource.data.approvalStatus == 'pending'
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.accountStatus == resource.data.accountStatus
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['approvalStatus', 'rejectionReason', 'updatedAt'])
+        && request.resource.data.approvalStatus in ['approved', 'rejected']
+        && (request.resource.data.approvalStatus == 'approved'
+          || (request.resource.data.rejectionReason is string
+            && request.resource.data.rejectionReason.size() > 0
+            && request.resource.data.rejectionReason.size() <= 1000));
 
       allow delete: if false;
     }

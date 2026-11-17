@@ -200,7 +200,7 @@ export function LoginPage({ admin = false, owner = false }: { admin?: boolean; o
       if (admin) await loginAsAdmin(email, password)
       else await login(email, password)
       const from = (location.state as { from?: string } | null)?.from
-      navigate(from || '/', { replace: true })
+      navigate(admin ? '/admin' : from || '/', { replace: true })
     } catch (issue) {
       setError(getFirebaseErrorMessage(issue))
     } finally {
