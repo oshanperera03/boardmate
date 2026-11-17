@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Check, Clock3, Eye, ShieldAlert, Users, X } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { Alert, Field, PageTitle, primaryButtonClass, secondaryButtonClass, Spinner, StatusPill } from '../components/common/UI'
+import { getPendingProperties, reviewProperty } from '../services/properties/propertyService'
 import { getAllUsers, getOwner, getOwners, getPendingOwners, reviewOwner, suspendOwner } from '../services/users/userService'
+import type { PropertyDocument } from '../types/property'
 import type { UserProfile } from '../types/user'
 import { getFirebaseErrorMessage } from '../utils/validation'
 
@@ -153,6 +155,91 @@ export function OwnerRequestsPage() {
       <PageTitle eyebrow="Administrator workspace" title="Owner approval requests" description="Review owner registration details before enabling dashboard access." action={<StatusPill tone="amber">{owners.length} pending</StatusPill>} />
       {error && <div className="mb-4"><Alert>{error}</Alert></div>}
       {loading ? <Spinner label="Loading owner requests" /> : <OwnerTable users={owners} empty="There are no owner requests waiting for review." onReview={decide} />}
+    </>
+  )
+}
+
+function PropertyRequestsTable({ properties, onReview }: { properties: PropertyDocument[]; onReview: (id: string, decision: 'approve' | 'reject', reason?: string) => Promise<void> }) {
+  const [reasons, setReasons] = useState<Record<string, string>>({})
+  const [busyId, setBusyId] = useState('')
+  const [error, setError] = useState('')
+
+  async function act(propertyId: string, decision: 'approve' | 'reject') {
+    setError('')
+    if (decision === 'reject' && !reasons[propertyId]?.trim()) {
+      setError('Add a rejection reason before rejecting a property.')
+      return
+    }
+    setBusyId(propertyId)
+    try {
+      await onReview(propertyId, decision, reasons[propertyId])
+    } catch (issue) {
+      setError(getFirebaseErrorMessage(issue))
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  if (!properties.length) return <div className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center text-sm text-slate-500">There are no property submissions waiting for review.</div>
+  return (
+    <>
+      {error && <div className="mb-4"><Alert>{error}</Alert></div>}
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <table className="w-full min-w-[850px] text-left text-sm">
+          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3">Property</th><th className="px-5 py-3">Location</th><th className="px-5 py-3">Owner ID</th><th className="px-5 py-3">Actions</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">
+            {properties.map((property) => {
+              const propertyId = property.id || ''
+              return (
+                <tr key={propertyId} className="align-top">
+                  <td className="px-5 py-4"><p className="font-semibold text-slate-800">{property.propertyName}</p><p className="mt-1 text-xs capitalize text-slate-500">{property.propertyType.replaceAll('_', ' ')}</p></td>
+                  <td className="px-5 py-4 text-slate-600"><p>{property.location.city}, {property.location.district}</p><p className="mt-1 text-xs">{property.location.address}</p></td>
+                  <td className="break-all px-5 py-4 text-xs text-slate-500">{property.ownerId}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input aria-label={`Rejection reason for ${property.propertyName}`} className="h-9 w-44 rounded-md border border-slate-200 px-2 text-xs" placeholder="Reason if rejecting" value={reasons[propertyId] || ''} onChange={(event) => setReasons({ ...reasons, [propertyId]: event.target.value })} />
+                      <button onClick={() => void act(propertyId, 'approve')} disabled={busyId === propertyId} className="inline-flex h-9 items-center gap-1 rounded-lg bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"><Check size={14} /> Approve</button>
+                      <button onClick={() => void act(propertyId, 'reject')} disabled={busyId === propertyId} className="inline-flex h-9 items-center gap-1 rounded-lg bg-rose-600 px-2.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"><X size={14} /> Reject</button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+export function PropertyRequestsPage() {
+  const [properties, setProperties] = useState<PropertyDocument[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  async function load() {
+    setError('')
+    try {
+      setProperties(await getPendingProperties())
+    } catch (issue) {
+      setError(getFirebaseErrorMessage(issue))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { void load() }, [])
+
+  async function decide(propertyId: string, decision: 'approve' | 'reject', reason?: string) {
+    await reviewProperty(propertyId, decision, reason)
+    setProperties((current) => current.filter((property) => property.id !== propertyId))
+  }
+
+  return (
+    <>
+      <PageTitle eyebrow="Administrator workspace" title="Property approval requests" description="Review boarding property submissions before they are made available to students." action={<StatusPill tone="amber">{properties.length} pending</StatusPill>} />
+      {error && <div className="mb-4"><Alert>{error}</Alert></div>}
+      {loading ? <Spinner label="Loading property requests" /> : <PropertyRequestsTable properties={properties} onReview={decide} />}
     </>
   )
 }

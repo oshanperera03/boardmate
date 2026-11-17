@@ -54,5 +54,27 @@ service cloud.firestore {
 
       allow delete: if false;
     }
+
+    match /properties/{propertyId} {
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.approvalStatus == 'pending';
+
+      allow get, list: if signedIn()
+        && (resource.data.ownerId == request.auth.uid || isAdmin());
+
+      allow update: if isAdmin()
+        && resource.data.approvalStatus == 'pending'
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['approvalStatus', 'rejectionReason', 'updatedAt'])
+        && request.resource.data.approvalStatus in ['approved', 'rejected']
+        && (request.resource.data.approvalStatus == 'approved'
+          || (request.resource.data.rejectionReason is string
+            && request.resource.data.rejectionReason.size() > 0
+            && request.resource.data.rejectionReason.size() <= 1000));
+
+      allow delete: if false;
+    }
   }
 }

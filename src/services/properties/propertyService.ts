@@ -2,9 +2,10 @@ import {
   addDoc,
   collection,
   getDocs,
-  orderBy,
   query,
   serverTimestamp,
+  updateDoc,
+  doc,
   where,
   type DocumentData,
 } from 'firebase/firestore'
@@ -32,10 +33,16 @@ export async function createProperty(property: Omit<PropertyDocument, 'id' | 'ap
 
 export async function getOwnerProperties(ownerId: string): Promise<PropertyDocument[]> {
   const snapshot = await getDocs(
-    query(propertiesCollection, where('ownerId', '==', ownerId), orderBy('createdAt', 'desc')),
+    query(propertiesCollection, where('ownerId', '==', ownerId)),
   )
 
-  return snapshot.docs.map((entry) => toProperty(entry.data(), entry.id))
+  return snapshot.docs
+    .map((entry) => toProperty(entry.data(), entry.id))
+    .sort((first, second) => {
+      const firstTime = first.createdAt?.toMillis() ?? 0
+      const secondTime = second.createdAt?.toMillis() ?? 0
+      return secondTime - firstTime
+    })
 }
 
 export async function getOwnerPropertyStats(ownerId: string): Promise<PropertyStats> {
@@ -46,4 +53,32 @@ export async function getOwnerPropertyStats(ownerId: string): Promise<PropertySt
     approved: properties.filter((property) => property.approvalStatus === 'approved').length,
     rejected: properties.filter((property) => property.approvalStatus === 'rejected').length,
   }
+}
+
+export async function getPendingProperties(): Promise<PropertyDocument[]> {
+  const snapshot = await getDocs(
+    query(propertiesCollection, where('approvalStatus', '==', 'pending')),
+  )
+
+  return snapshot.docs.map((entry) => toProperty(entry.data(), entry.id))
+}
+
+export async function reviewProperty(
+  propertyId: string,
+  decision: 'approve' | 'reject',
+  reason?: string,
+): Promise<void> {
+  const normalizedReason = reason?.trim()
+  if (decision === 'reject' && !normalizedReason) {
+    throw new Error('A reason is required when rejecting a property.')
+  }
+  if (normalizedReason && normalizedReason.length > 1000) {
+    throw new Error('The rejection reason is too long.')
+  }
+
+  await updateDoc(doc(db, 'properties', propertyId), {
+    approvalStatus: decision === 'approve' ? 'approved' : 'rejected',
+    rejectionReason: decision === 'reject' ? normalizedReason : null,
+    updatedAt: serverTimestamp(),
+  })
 }

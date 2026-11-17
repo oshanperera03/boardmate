@@ -1,7 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute, AuthenticatedRedirect } from './components/auth/ProtectedRoute'
 import { AppLayout } from './components/layouts/AppLayout'
-import { AdminDashboard, OwnerDetailsPage, OwnerRequestsPage, OwnersListPage, RegisteredUsersPage } from './pages/AdminPages'
+import { AdminDashboard, OwnerDetailsPage, OwnerRequestsPage, OwnersListPage, PropertyRequestsPage, RegisteredUsersPage } from './pages/AdminPages'
 import { ForgotPasswordPage, LandingPage, LoginPage, RegistrationPage } from './pages/PublicPages'
 import {
   AccountSuspendedPage,
@@ -68,6 +68,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/requests" element={<OwnerRequestsPage />} />
+          <Route path="/admin/properties" element={<PropertyRequestsPage />} />
           <Route path="/admin/owners/:uid" element={<OwnerDetailsPage />} />
           <Route path="/admin/users" element={<RegisteredUsersPage />} />
           <Route path="/admin/approved" element={<OwnersListPage status="approved" />} />

@@ -1,23 +1,20 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import {
   ArrowRight,
   BadgeCheck,
   BookOpen,
   Building2,
-  Camera,
   Clock3,
   Mail,
   Plus,
   ShieldAlert,
   Sparkles,
-  X,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { PageTitle, Alert, Field, primaryButtonClass, secondaryButtonClass, StatusPill } from '../components/common/UI'
 import { useAuth } from '../contexts/AuthContext'
 import { logout, requestPasswordReset } from '../services/auth/authService'
 import { createProperty, getOwnerProperties, getOwnerPropertyStats } from '../services/properties/propertyService'
-import { isStorageConfigured, uploadPropertyImages } from '../services/storage/storageService'
 import { updateOwnProfile } from '../services/users/userService'
 import type { FacilityOption, GenderPolicy, PreferredContactMethod, PropertyDocument, PropertyType, RoomArrangement } from '../types/property'
 import { getFirebaseErrorMessage, sriLankanPhonePattern } from '../utils/validation'
@@ -289,9 +286,6 @@ export function OwnerPropertyFormPage() {
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [previewUrls, setPreviewUrls] = useState<string[]>([])
-  const [uploadProgress, setUploadProgress] = useState<Array<{ fileName: string; progress: number; status: string }>>([])
 
   if (!profile || profile.role !== 'owner' || profile.approvalStatus !== 'approved' || profile.accountStatus !== 'active') {
     return <Alert>Only approved owner accounts can submit properties.</Alert>
@@ -300,44 +294,6 @@ export function OwnerPropertyFormPage() {
   function updateField<K extends keyof typeof initialForm>(key: K, value: (typeof initialForm)[K]) {
     setForm((previous) => ({ ...previous, [key]: value }))
     setErrors((previous) => ({ ...previous, [key]: '' }))
-  }
-
-  function handleSelectFiles(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? [])
-    const validFiles: File[] = []
-    const rejectedReasons: string[] = []
-
-    for (const file of files) {
-      const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
-      if (!['jpg', 'jpeg', 'png', 'webp'].includes(extension)) {
-        rejectedReasons.push(`${file.name} is not a supported image type.`)
-        continue
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        rejectedReasons.push(`${file.name} is larger than 5 MB.`)
-        continue
-      }
-      validFiles.push(file)
-    }
-
-    if (rejectedReasons.length > 0) {
-      setErrors((previous) => ({ ...previous, images: rejectedReasons.join(' ') }))
-    }
-
-    const nextFiles = [...selectedFiles, ...validFiles]
-    const nextPreviews = [...previewUrls, ...validFiles.map((file) => URL.createObjectURL(file))]
-
-    setSelectedFiles(nextFiles)
-    setPreviewUrls(nextPreviews)
-    setUploadProgress([])
-    event.target.value = ''
-  }
-
-  function removeSelectedImage(index: number) {
-    setSelectedFiles((previous) => previous.filter((_, itemIndex) => itemIndex !== index))
-    setPreviewUrls((previous) => previous.filter((_, itemIndex) => itemIndex !== index))
-    setUploadProgress((previous) => previous.filter((_, itemIndex) => itemIndex !== index))
-    setErrors((previous) => ({ ...previous, images: '' }))
   }
 
   function validateForm() {
@@ -380,17 +336,6 @@ export function OwnerPropertyFormPage() {
     setSubmitting(true)
 
     try {
-      let uploadedImageUrls: string[] = form.images
-      if (selectedFiles.length > 0) {
-        if (!isStorageConfigured()) {
-          setErrors({ images: 'Firebase Storage is not enabled for this project. Enable Cloud Storage and configure VITE_FIREBASE_STORAGE_BUCKET to upload property images.' })
-          setSubmitting(false)
-          return
-        }
-
-        uploadedImageUrls = await uploadPropertyImages(selectedFiles, profile.uid, setUploadProgress)
-      }
-
       await createProperty({
         ownerId: profile.uid,
         propertyName: form.propertyName.trim(),
@@ -410,7 +355,7 @@ export function OwnerPropertyFormPage() {
         separateRooms: form.separateRooms,
         sharedBedroomsAllowed: form.sharedBedroomsAllowed,
         facilities: form.facilities,
-        images: uploadedImageUrls,
+        images: [],
         contact: {
           name: form.contactName.trim(),
           phone: cleanPhone,
@@ -473,7 +418,7 @@ export function OwnerPropertyFormPage() {
               {errors.address && <p className="text-sm text-rose-600">{errors.address}</p>}
             </div>
             <div>
-              <Field label="Map link" type="url" placeholder="https://maps.google.com/..." value={form.mapLink} onChange={(event) => updateField('mapLink', event.target.value)} required hint="Paste a Google Maps or other map link for this property." />
+              <Field label="Map link" type="text" placeholder="https://maps.google.com/..." value={form.mapLink} onChange={(event) => updateField('mapLink', event.target.value)} required hint="Paste a Google Maps or other map link for this property." />
               {errors.mapLink && <p className="mt-1.5 text-sm text-rose-600">{errors.mapLink}</p>}
             </div>
           </div>
@@ -534,48 +479,6 @@ export function OwnerPropertyFormPage() {
         )
       case 4:
         return (
-          <div className="space-y-4">
-            {!isStorageConfigured() && (
-              <Alert type="info">Firebase Storage is not enabled for this project. Enable Cloud Storage and add the storage bucket to your Firebase settings to upload images and previews.</Alert>
-            )}
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-              <Camera size={22} className="text-[#183b63]" />
-              <span className="text-sm font-semibold text-slate-700">Add property photos</span>
-              <span className="text-xs text-slate-500">JPG, JPEG, PNG, or WebP up to 5 MB each</span>
-              <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleSelectFiles} />
-            </label>
-            {errors.images && <p className="text-sm text-rose-600">{errors.images}</p>}
-            {previewUrls.length > 0 && (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {previewUrls.map((preview, index) => (
-                  <div key={`${preview}-${index}`} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <img src={preview} alt={`Property preview ${index + 1}`} className="h-36 w-full object-cover" />
-                    <button type="button" onClick={() => removeSelectedImage(index)} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-slate-900/80 text-white" aria-label="Remove image">
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {uploadProgress.length > 0 && (
-              <div className="space-y-2">
-                {uploadProgress.map((item) => (
-                  <div key={item.fileName}>
-                    <div className="mb-1 flex items-center justify-between text-xs text-slate-500">
-                      <span>{item.fileName}</span>
-                      <span>{item.progress}%</span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                      <div className="h-full rounded-full bg-[#183b63]" style={{ width: `${item.progress}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )
-      case 5:
-        return (
           <div className="grid gap-5">
             <Field label="Contact person name" value={form.contactName} onChange={(event) => updateField('contactName', event.target.value)} required />
             {errors.contactName && <p className="text-sm text-rose-600">{errors.contactName}</p>}
@@ -608,7 +511,7 @@ export function OwnerPropertyFormPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {errors.submit && <Alert>{errors.submit}</Alert>}
           <div className="grid gap-8">
-            {[0, 1, 2, 3, 4, 5].map((stepIndex) => (
+            {[0, 1, 2, 3, 4].map((stepIndex) => (
               <section key={stepIndex} className="border-b border-slate-200 pb-8 last:border-b-0 last:pb-0">
                 {renderStepContent(stepIndex)}
               </section>
@@ -639,7 +542,7 @@ export function OwnerPropertiesPage() {
 
     void getOwnerProperties(profile.uid)
       .then((items) => setProperties(items))
-      .catch(() => setError('Unable to load your properties right now.'))
+      .catch((issue: unknown) => setError(getFirebaseErrorMessage(issue)))
       .finally(() => setLoading(false))
   }, [profile?.uid])
 

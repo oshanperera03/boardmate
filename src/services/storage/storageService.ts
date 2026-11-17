@@ -56,12 +56,19 @@ export async function uploadPropertyImages(
           reject(error)
         },
         async () => {
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref)
-          urlList.push(downloadUrl)
-          const current = [...progressItems]
-          current[index] = { ...current[index], progress: 100, status: 'done' }
-          onProgress?.(current)
-          resolve()
+          try {
+            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref)
+            urlList.push(downloadUrl)
+            const current = [...progressItems]
+            current[index] = { ...current[index], progress: 100, status: 'done' }
+            onProgress?.(current)
+            resolve()
+          } catch (error) {
+            const current = [...progressItems]
+            current[index] = { ...current[index], status: 'error' }
+            onProgress?.(current)
+            reject(error)
+          }
         },
       )
     })

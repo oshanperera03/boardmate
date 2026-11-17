@@ -34,6 +34,7 @@ export function AppLayout() {
     ? [
         { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
         { to: '/admin/requests', label: 'Approval requests', icon: ClipboardList },
+        { to: '/admin/properties', label: 'Property approvals', icon: Building2 },
         { to: '/admin/users', label: 'Registered users', icon: Users },
         { to: '/admin/approved', label: 'Approved owners', icon: CheckCircle2 },
         { to: '/admin/rejected', label: 'Rejected owners', icon: Building2 },
