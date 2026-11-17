@@ -7,13 +7,6 @@
         { "fieldPath": "role", "order": "ASCENDING" },
         { "fieldPath": "approvalStatus", "order": "ASCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
     }
   ],
   "fieldOverrides": []

@@ -1,8 +1,8 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute, AuthenticatedRedirect } from './components/auth/ProtectedRoute'
 import { AppLayout } from './components/layouts/AppLayout'
 import { AdminDashboard, OwnerDetailsPage, OwnerRequestsPage, OwnersListPage, RegisteredUsersPage } from './pages/AdminPages'
-import { ForgotPasswordPage, LandingPage, LoginPage, RegistrationPage, VerificationPage } from './pages/PublicPages'
+import { ForgotPasswordPage, LandingPage, LoginPage, RegistrationPage } from './pages/PublicPages'
 import { AccountSuspendedPage, OwnerDashboard, OwnerPendingPage, OwnerStatusPage, ProfilePage, StudentDashboard, StudentSettingsPage } from './pages/RolePages'
 
 function NotFound() {
@@ -25,7 +25,6 @@ export default function App() {
         <Route path="/admin/login" element={<LoginPage admin />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       </Route>
-      <Route path="/verify-email" element={<VerificationPage />} />
       <Route path="/account-suspended" element={<AccountSuspendedPage />} />
 
       <Route element={<ProtectedRoute role="student" />}>

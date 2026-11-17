@@ -1,8 +1,8 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { ArrowRight, BadgeCheck, Building2, GraduationCap, House, ShieldCheck } from 'lucide-react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { login, loginAsAdmin, logout, register, requestPasswordReset, resendVerification } from '../services/auth/authService'
+import { login, loginAsAdmin, logout, register, requestPasswordReset } from '../services/auth/authService'
 import { getFirebaseErrorMessage, emailPattern, sriLankanPhonePattern, strongPasswordPattern } from '../utils/validation'
 import { Alert, Brand, Field, primaryButtonClass, secondaryButtonClass, Spinner } from '../components/common/UI'
 
@@ -140,7 +140,7 @@ export function RegistrationPage({ owner = false }: { owner?: boolean }) {
     setBusy(true)
     try {
       await register({ fullName, email, phoneNumber, password, role: owner ? 'owner' : 'student' })
-      navigate('/verify-email', { replace: true })
+      navigate('/', { replace: true })
     } catch (issue) {
       setError(getFirebaseErrorMessage(issue))
     } finally {
@@ -185,7 +185,6 @@ export function LoginPage({ admin = false, owner = false }: { admin?: boolean; o
   }
   if (authUser && !profile) return <Spinner label="Loading your account" />
   if (authUser && profile) {
-    if (!authUser.emailVerified) return <Navigate to="/verify-email" replace />
     return <Navigate to={profile.role === 'admin' ? '/admin' : profile.role === 'owner' ? (profile.accountStatus === 'suspended' || profile.approvalStatus === 'rejected' ? '/owner/status' : profile.approvalStatus === 'pending' ? '/owner/pending' : '/owner') : profile.accountStatus === 'suspended' ? '/account-suspended' : '/student'} replace />
   }
 
@@ -264,61 +263,3 @@ export function ForgotPasswordPage() {
   )
 }
 
-export function VerificationPage() {
-  const { authUser, profile, refreshVerification } = useAuth()
-  const navigate = useNavigate()
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-  useEffect(() => {
-    if (!authUser?.emailVerified || !profile) return
-    const destination = profile.role === 'admin' ? '/admin' : profile.role === 'owner' ? (profile.accountStatus === 'suspended' || profile.approvalStatus === 'rejected' ? '/owner/status' : profile.approvalStatus === 'pending' ? '/owner/pending' : '/owner') : profile.accountStatus === 'suspended' ? '/account-suspended' : '/student'
-    navigate(destination, { replace: true })
-  }, [authUser, navigate, profile])
-
-  async function resend() {
-    setBusy(true)
-    setError('')
-    setMessage('')
-    try {
-      await resendVerification()
-      setMessage('A new verification email has been sent.')
-    } catch (issue) {
-      setError(getFirebaseErrorMessage(issue))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function checkStatus() {
-    setBusy(true)
-    setError('')
-    try {
-      await refreshVerification()
-      setMessage('Verification status refreshed.')
-    } catch (issue) {
-      setError(getFirebaseErrorMessage(issue))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <AuthCard title="Verify your email" description="Please confirm your email address to keep your account secure and continue.">
-      <div className="grid gap-4">
-        {error && <Alert>{error}</Alert>}
-        {message && <Alert type="success">{message}</Alert>}
-        {!authUser ? (
-          <><Alert type="info">Sign in with the email address you registered to resend or check your verification email.</Alert><Link to="/login" className={`${primaryButtonClass} w-full`}>Go to sign in</Link></>
-        ) : (
-          <>
-            <div className="rounded-lg bg-slate-50 p-4 text-sm leading-6 text-slate-600">We sent a verification link to <strong className="break-all text-slate-900">{authUser.email}</strong>. Please check your inbox and spam folder.</div>
-            <button onClick={checkStatus} className={primaryButtonClass} disabled={busy}>I’ve verified my email</button>
-            <button onClick={resend} className={secondaryButtonClass} disabled={busy}>Resend verification email</button>
-            <button onClick={async () => { try { await logout(); navigate('/') } catch (issue) { setError(getFirebaseErrorMessage(issue)) } }} className="text-sm font-semibold text-slate-500 hover:text-slate-800">Sign out</button>
-          </>
-        )}
-      </div>
-    </AuthCard>
-  )
-}

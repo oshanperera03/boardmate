@@ -1,6 +1,5 @@
 import {
   onAuthStateChanged,
-  reload,
   type User as FirebaseUser,
 } from 'firebase/auth'
 import { doc, onSnapshot } from 'firebase/firestore'
@@ -23,7 +22,6 @@ interface AuthContextValue {
   loading: boolean
   profileError: string | null
   refreshProfile: () => Promise<void>
-  refreshVerification: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -50,12 +48,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setProfile(userProfile)
-  }, [])
-
-  const refreshVerification = useCallback(async () => {
-    if (!auth.currentUser) return
-    await reload(auth.currentUser)
-    setAuthUser(auth.currentUser)
   }, [])
 
   useEffect(() => {
@@ -110,8 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ authUser, profile, loading, profileError, refreshProfile, refreshVerification }),
-    [authUser, profile, loading, profileError, refreshProfile, refreshVerification],
+    () => ({ authUser, profile, loading, profileError, refreshProfile }),
+    [authUser, profile, loading, profileError, refreshProfile],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

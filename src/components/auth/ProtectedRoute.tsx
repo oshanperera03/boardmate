@@ -33,7 +33,6 @@ export function ProtectedRoute({
       </main>
     )
   }
-  if (!authUser.emailVerified) return <Navigate to="/verify-email" replace />
   if (profile.accountStatus === 'suspended') {
     if (profile.role === 'owner' && ownerGate === 'status') return <Outlet />
     return <Navigate to={profile.role === 'owner' ? '/owner/status' : '/account-suspended'} replace />
@@ -52,6 +51,5 @@ export function AuthenticatedRedirect() {
   const { authUser, profile, loading } = useAuth()
   if (loading) return <Spinner />
   if (!authUser || !profile) return <Outlet />
-  if (!authUser.emailVerified) return <Navigate to="/verify-email" replace />
   return <Navigate to={homePath(profile.role, profile.approvalStatus, profile.accountStatus)} replace />
 }
