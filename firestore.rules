@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    function ownProfile(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow get: if ownProfile(uid) || isAdmin();
+      allow list: if isAdmin();
+
+      allow create: if ownProfile(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role in ['student', 'owner']
+        && request.resource.data.approvalStatus
+          == (request.resource.data.role == 'owner' ? 'pending' : 'not_required')
+        && request.resource.data.accountStatus == 'active'
+        && request.resource.data.keys().hasOnly([
+          'uid', 'fullName', 'email', 'phoneNumber', 'role',
+          'approvalStatus', 'accountStatus', 'createdAt', 'updatedAt'
+        ]);
+
+      allow update: if ownProfile(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['fullName', 'phoneNumber', 'updatedAt'])
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.approvalStatus == resource.data.approvalStatus
+        && request.resource.data.accountStatus == resource.data.accountStatus;
+
+      allow delete: if false;
+    }
+  }
+}
