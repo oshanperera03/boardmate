@@ -14,9 +14,6 @@ async function setAdministrator() {
   const auth = getAuth()
   const db = getFirestore()
   const account = await auth.getUser(uid)
-  if (!account.emailVerified) {
-    throw new Error('Verify the account email before granting administrator access.')
-  }
   if (account.disabled) {
     throw new Error('The Firebase Authentication account is disabled.')
   }
