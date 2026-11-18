@@ -90,7 +90,10 @@ export function StudentDashboard() {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#183b63]"><Sparkles size={14} /> Verified listings</span>
             <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">Find a place that fits your student life.</h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">Search by campus, budget, room type, gender policy, facilities and availability.</p>
-            <Link to="/student/search" className={`${primaryButtonClass} mt-5`}>Find accommodation <ArrowRight size={16} /></Link>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link to="/student/search" className={primaryButtonClass}>Find accommodation <ArrowRight size={16} /></Link>
+              <Link to="/student/boardings" className={secondaryButtonClass}>Browse boardings</Link>
+            </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <div className="flex items-center gap-3 rounded-xl bg-[#f7f9fc] p-4"><span className="grid size-10 place-items-center rounded-lg bg-white text-[#2b65a0]"><BadgeCheck size={19} /></span><div><p className="text-sm font-semibold text-slate-800">Account verified</p><p className="text-xs text-slate-500">Your email is confirmed</p></div></div>

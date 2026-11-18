@@ -18,6 +18,7 @@ import {
   StudentDashboard,
   StudentSettingsPage,
 } from './pages/RolePages'
+import { StudentBoardingsPage } from './pages/StudentBoardingsPage'
 
 function NotFound() {
   return (
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/student/properties/:propertyId" element={<StudentPropertyDetailsPage />} />
           <Route path="/student/bookings" element={<StudentBookingsPage />} />
           <Route path="/student/notifications" element={<NotificationsPage />} />
+          <Route path="/student/boardings" element={<StudentBoardingsPage />} />
           <Route path="/student/profile" element={<ProfilePage />} />
           <Route path="/student/settings" element={<StudentSettingsPage />} />
         </Route>

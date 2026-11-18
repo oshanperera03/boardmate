@@ -1,6 +1,6 @@
 # Boardmate
 
-Boardmate is the authentication and account-management foundation for a student boarding platform. It includes student and boarding owner registration, email verification, owner approval, role-restricted dashboards, administrator review tools, Firestore rules, and trusted Cloud Functions. Accommodation listings and booking features are intentionally not included.
+Boardmate is a student boarding platform with student and boarding owner registration, email verification, owner approval, role-restricted dashboards, administrator review tools, published boarding discovery, Firestore rules, and trusted Cloud Functions. Booking features are not included.
 
 ## Local setup
 
@@ -45,6 +45,8 @@ The script sets the `admin: true` custom claim and creates/updates that account'
 - Student and owner clients can create only their own student or pending-owner profile. A user's profile edits are limited by Firestore rules to name and phone number.
 - Administrator custom claims are assigned only by trusted Admin SDK code. Administrator reads are guarded by the claim; owner approval/rejection and suspension run through callable Cloud Functions that validate the claim server-side.
 - Owner registration requires email verification. Pending owners can reach only the waiting/status screens; rejected owners see the administrator's reason; only approved, active owners can access the owner dashboard and profile.
+- Students can browse published listings at `/student/boardings`. To add a listing, an administrator creates a `boardings/{listingId}` document in Firestore with the fields below. Only signed-in users can read published listings; only administrators can create, edit, or delete them.
+- Boarding listing documents use: `name` (string), `description` (string), `address` (string), `city` (string), `district` (string), `monthlyRent` (number, LKR), `roomType` (string), `availableRooms` (integer), `genderPreference` (`male`, `female`, or `any`), `facilities` (string array), `contactPhone` (string), and `status` (`published` to show the listing).
 - Configure App Check, authorized domains, password policy, email templates, monitoring, and production administrator access procedures before launch.
 
 ## Checks

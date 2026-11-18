@@ -72,6 +72,7 @@ export function AppLayout() {
           { to: '/student/search', label: 'Find accommodation', icon: Building2 },
           { to: '/student/bookings', label: 'My bookings', icon: ClipboardList },
           { to: '/student/notifications', label: 'Notifications', icon: Bell },
+          { to: '/student/boardings', label: 'Find a boarding', icon: Building2 },
           { to: '/student/profile', label: 'My profile', icon: CircleUserRound },
           { to: '/student/settings', label: 'Account settings', icon: Shield },
         ]

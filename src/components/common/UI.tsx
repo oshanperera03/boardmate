@@ -1,14 +1,16 @@
 import { useId, type InputHTMLAttributes, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle, CheckCircle2, LoaderCircle, ShieldCheck } from 'lucide-react'
+import { AlertCircle, CheckCircle2, LoaderCircle } from 'lucide-react'
+import boardmateLogo from '../../assets/boardmate-logo.png'
 
 export function Brand({ light = false }: { light?: boolean }) {
   return (
-    <Link to="/" className="inline-flex items-center gap-2.5 font-bold tracking-tight">
-      <span className="grid size-9 place-items-center rounded-xl bg-[#e6f0fb] text-[#183b63]">
-        <ShieldCheck size={20} strokeWidth={2.2} />
-      </span>
-      <span className={light ? 'text-white' : 'text-[#183b63]'}>boardmate</span>
+    <Link to="/" className="inline-flex items-center" aria-label="Boardmate home">
+      <img
+        src={boardmateLogo}
+        alt="Boardmate"
+        className={`h-11 w-auto max-w-[210px] object-contain ${light ? 'brightness-0 invert' : ''}`}
+      />
     </Link>
   )
 }

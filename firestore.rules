@@ -298,5 +298,11 @@ service cloud.firestore {
         && (resource.data.recipientId == request.auth.uid || resource.data.userId == request.auth.uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
     }
+
+    match /boardings/{boardingId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.status == 'published');
+      allow write: if isAdmin();
+    }
   }
 }
