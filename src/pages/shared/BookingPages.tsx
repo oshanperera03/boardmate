@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, CheckCircle2, Clock3, Mail, Phone, User, XCircle } from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
+import { CalendarDays, CheckCircle2, Clock3, Mail, Phone, Star, User, XCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
 import {
   acceptBooking,
   cancelBooking,
@@ -9,14 +10,14 @@ import {
   getStudentBookings,
   rejectBooking,
   submitBookingRequest,
-} from '../services/bookings/bookingService'
-import type { BookingDocument, BookingStatus } from '../types/booking'
-import type { PropertyDocument } from '../types/property'
-import type { RoomDocument } from '../types/room'
-import { Alert, Field, PageTitle, primaryButtonClass, secondaryButtonClass, Spinner, StatusPill } from '../components/common/UI'
-import { getFirebaseErrorMessage } from '../utils/validation'
+} from '../../services/bookings/bookingService'
+import type { BookingDocument, BookingStatus } from '../../types/booking'
+import type { PropertyDocument } from '../../types/property'
+import type { RoomDocument } from '../../types/room'
+import { Alert, Field, PageTitle, primaryButtonClass, secondaryButtonClass, Spinner, StatusPill } from '../../components/common/UI'
+import { getFirebaseErrorMessage } from '../../utils/validation'
 import { doc, getDoc } from 'firebase/firestore'
-import { db } from '../services/firebase/config'
+import { db } from '../../services/firebase/config'
 
 function statusTone(status: BookingStatus): 'blue' | 'green' | 'red' | 'amber' | 'slate' {
   if (status === 'accepted' || status === 'completed') return 'green'
@@ -119,6 +120,14 @@ export function StudentBookingsPage() {
               {booking.rejectionReason && <Alert>Reason: {booking.rejectionReason}</Alert>}
               {booking.bookingStatus === 'completed' && booking.paymentConfirmed && <Alert type="success">Payment confirmed. This room is now occupied for your booking.</Alert>}
               {booking.bookingStatus === 'pending' && <div className="mt-4 flex justify-end"><button type="button" onClick={() => void handleCancel(booking)} className={secondaryButtonClass}>Cancel request</button></div>}
+              {booking.bookingStatus === 'completed' && booking.paymentConfirmed && (
+                <div className="mt-4 flex justify-end">
+                  <Link to={`/student/properties/${booking.propertyId}#property-reviews`} className={primaryButtonClass}>
+                    <Star size={16} />
+                    Review property
+                  </Link>
+                </div>
+              )}
             </article>
           ))}
         </div>

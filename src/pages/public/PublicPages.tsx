@@ -1,40 +1,14 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useState, type FormEvent } from 'react'
 import { ArrowRight, BadgeCheck, Building2, GraduationCap, House, ShieldCheck } from 'lucide-react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
-import { login, loginAsAdmin, logout, register, requestPasswordReset } from '../services/auth/authService'
-import { getFirebaseErrorMessage, emailPattern, sriLankanPhonePattern, strongPasswordPattern } from '../utils/validation'
-import { Alert, Brand, Field, primaryButtonClass, secondaryButtonClass, Spinner } from '../components/common/UI'
+import { useAuth } from '../../contexts/AuthContext'
+import { login, loginAsAdmin, loginAsAdminWithGoogle, loginWithGoogle, logout, register, registerWithGoogle, requestPasswordReset } from '../../services/auth/authService'
+import { getFirebaseErrorMessage, emailPattern, sriLankanPhonePattern, strongPasswordPattern } from '../../utils/validation'
+import { Alert, Brand, Field, primaryButtonClass, secondaryButtonClass, Spinner } from '../../components/common/UI'
+import { GoogleIcon } from '../../components/auth/GoogleIcon'
+import { AuthCard } from '../../components/auth/AuthCard'
 
-function AuthCard({ children, title, description, admin = false }: { children: ReactNode; title: string; description: string; admin?: boolean }) {
-  return (
-    <div className="min-h-screen bg-[#f7f9fc]">
-      <header className="mx-auto flex h-[76px] max-w-7xl items-center px-5 sm:px-8"><Brand /></header>
-      <main className="mx-auto grid max-w-6xl gap-10 px-5 pb-16 pt-6 sm:px-8 lg:grid-cols-[1fr_440px] lg:items-center lg:gap-16 lg:pb-24">
-        <div className="hidden lg:block">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#183b63]">
-            <ShieldCheck size={15} /> A better way to find your place
-          </div>
-          <h1 className="max-w-xl text-5xl font-bold leading-[1.12] tracking-tight text-slate-950">
-            Find a place that feels like <span className="text-[#2b65a0]">home.</span>
-          </h1>
-          <p className="mt-5 max-w-lg text-lg leading-8 text-slate-500">A trusted community connecting Sri Lankan students with boarding owners.</p>
-          <div className="mt-10 flex items-center gap-4 text-sm text-slate-600">
-            <span className="grid size-10 place-items-center rounded-xl bg-white text-[#2b65a0] shadow-sm"><BadgeCheck size={19} /></span>
-            {admin ? 'Secure access for authorized administrators only' : 'Your account and information are kept secure'}
-          </div>
-        </div>
-        <section className="mx-auto w-full max-w-[440px] rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_12px_42px_rgba(27,52,84,0.06)] sm:p-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h2>
-            <p className="mt-1.5 text-sm leading-6 text-slate-500">{description}</p>
-          </div>
-          {children}
-        </section>
-      </main>
-    </div>
-  )
-}
+
 
 export function LandingPage() {
   return (
@@ -121,10 +95,24 @@ export function LandingPage() {
 export function RegistrationPage({ owner = false }: { owner?: boolean }) {
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
+  const [googleBusy, setGoogleBusy] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
+
+  async function continueWithGoogle() {
+    setError('')
+    setGoogleBusy(true)
+    try {
+      await registerWithGoogle(owner ? 'owner' : 'student')
+      navigate('/', { replace: true })
+    } catch (issue) {
+      setError(getFirebaseErrorMessage(issue))
+    } finally {
+      setGoogleBusy(false)
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -173,8 +161,22 @@ export function RegistrationPage({ owner = false }: { owner?: boolean }) {
         <Field name="password" label="Password" type="password" autoComplete="new-password" value={password} onChange={(event) => { setPassword(event.target.value); setFieldErrors((current) => ({ ...current, password: '' })) }} required hint="At least 8 characters, including upper- and lowercase letters, a number, and a symbol." error={fieldErrors.password} />
         <Field name="confirmation" label="Confirm password" type="password" autoComplete="new-password" value={confirmation} onChange={(event) => { setConfirmation(event.target.value); setFieldErrors((current) => ({ ...current, confirmation: '' })) }} required error={fieldErrors.confirmation} />
         {owner && <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-900">Owner registrations are reviewed by an administrator. You can check your approval status after registration.</p>}
-        <button className={`${primaryButtonClass} mt-1 w-full`} disabled={busy}>{busy ? 'Creating account…' : owner ? 'Submit registration request' : 'Create account'}</button>
+        <button className={`${primaryButtonClass} mt-1 w-full`} disabled={busy || googleBusy}>{busy ? 'Creating account…' : owner ? 'Submit registration request' : 'Create account'}</button>
       </form>
+      <div className="my-5 flex items-center gap-3" aria-hidden="true">
+        <div className="h-px flex-1 bg-slate-200" />
+        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">or</span>
+        <div className="h-px flex-1 bg-slate-200" />
+      </div>
+      <button
+        type="button"
+        className="flex min-h-11 w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+        onClick={continueWithGoogle}
+        disabled={busy || googleBusy}
+      >
+        <GoogleIcon />
+        {googleBusy ? 'Connecting…' : 'Continue with Google'}
+      </button>
       <p className="mt-5 text-center text-sm text-slate-500">Already have an account? <Link to={owner ? '/owner/login' : '/login'} className="font-semibold text-[#183b63] hover:underline">Sign in</Link></p>
       {!owner && <p className="mt-3 text-center text-sm text-slate-500">Are you a boarding owner? <Link to="/owner/register" className="font-semibold text-[#183b63] hover:underline">Register here</Link></p>}
     </AuthCard>
@@ -186,6 +188,7 @@ export function LoginPage({ admin = false, owner = false }: { admin?: boolean; o
   const location = useLocation()
   const { authUser, profile, loading, profileError } = useAuth()
   const [busy, setBusy] = useState(false)
+  const [googleBusy, setGoogleBusy] = useState(false)
   const [error, setError] = useState('')
   const [emailError, setEmailError] = useState('')
   const [passwordError, setPasswordError] = useState('')
@@ -235,6 +238,21 @@ export function LoginPage({ admin = false, owner = false }: { admin?: boolean; o
     }
   }
 
+  async function continueWithGoogle() {
+    setError('')
+    setGoogleBusy(true)
+    try {
+      if (admin) await loginAsAdminWithGoogle()
+      else await loginWithGoogle(owner ? 'owner' : 'student')
+      const from = (location.state as { from?: string } | null)?.from
+      navigate(admin ? '/admin' : from || '/', { replace: true })
+    } catch (issue) {
+      setError(getFirebaseErrorMessage(issue))
+    } finally {
+      setGoogleBusy(false)
+    }
+  }
+
   return (
     <AuthCard admin={admin} title={admin ? 'Administrator sign in' : 'Welcome back'} description={admin ? 'Sign in with an administrator account provisioned by your platform administrator.' : 'Sign in to continue to your Boardmate account.'}>
       <form className="grid gap-4" onSubmit={submit}>
@@ -242,8 +260,24 @@ export function LoginPage({ admin = false, owner = false }: { admin?: boolean; o
         <Field name="email" label="Email address" type="email" autoComplete="email" required error={emailError} onChange={() => setEmailError('')} />
         <Field name="password" label="Password" type="password" autoComplete="current-password" required error={passwordError} onChange={() => setPasswordError('')} />
         {!admin && <div className="text-right"><Link to="/forgot-password" className="text-sm font-semibold text-[#183b63] hover:underline">Forgot password?</Link></div>}
-        <button className={`${primaryButtonClass} w-full`} disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+        <button className={`${primaryButtonClass} w-full`} disabled={busy || googleBusy}>{busy ? 'Signing in…' : 'Sign in'}</button>
       </form>
+      <>
+        <div className="my-5 flex items-center gap-3" aria-hidden="true">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">or</span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+        <button
+          type="button"
+          className="flex min-h-11 w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={continueWithGoogle}
+          disabled={busy || googleBusy}
+        >
+          <GoogleIcon />
+          {googleBusy ? 'Connecting…' : 'Continue with Google'}
+        </button>
+      </>
       {!admin && (
         <div className="mt-5 text-center text-sm text-slate-500">
           {owner ? <>Not registered as an owner? <Link to="/owner/register" className="font-semibold text-[#183b63] hover:underline">Create an owner account</Link></> : <>New to Boardmate? <Link to="/register" className="font-semibold text-[#183b63] hover:underline">Create an account</Link></>}

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Building2, Eye, Filter, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Alert, Field, PageTitle, primaryButtonClass, secondaryButtonClass, Spinner, StatusPill } from '../components/common/UI'
-import { useAuth } from '../contexts/AuthContext'
-import { getOwnerProperties } from '../services/properties/propertyService'
+import { Alert, Field, PageTitle, primaryButtonClass, secondaryButtonClass, Spinner, StatusPill } from '../../components/common/UI'
+import { useAuth } from '../../contexts/AuthContext'
+import { getOwnerProperties } from '../../services/properties/propertyService'
 import {
   calculateAvailableSpaces,
   calculateAvailabilityStatus,
@@ -13,10 +13,10 @@ import {
   getOwnerRooms,
   updateRoom,
   updateRoomAvailability,
-} from '../services/rooms/roomService'
-import type { PropertyDocument } from '../types/property'
-import type { RoomAvailabilityStatus, RoomDocument, RoomFacility, RoomGenderPolicy, RoomInput, RoomType, SharingArrangement } from '../types/room'
-import { getFirebaseErrorMessage } from '../utils/validation'
+} from '../../services/rooms/roomService'
+import type { PropertyDocument } from '../../types/property'
+import type { RoomAvailabilityStatus, RoomDocument, RoomFacility, RoomGenderPolicy, RoomInput, RoomType, SharingArrangement } from '../../types/room'
+import { getFirebaseErrorMessage } from '../../utils/validation'
 
 const roomTypeOptions: Array<{ value: RoomType; label: string }> = [
   { value: 'single', label: 'Single room' },

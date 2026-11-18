@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react'
 import { Bell, CheckCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { DocumentSnapshot } from 'firebase/firestore'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../../contexts/AuthContext'
 import {
   getNotificationHistory,
   markAllNotificationsRead,
   markNotificationRead,
-} from '../services/bookings/bookingService'
-import type { NotificationDocument } from '../types/booking'
-import { Alert, PageTitle, Spinner } from '../components/common/UI'
-import { getFirebaseErrorMessage } from '../utils/validation'
+} from '../../services/bookings/bookingService'
+import type { NotificationDocument } from '../../types/booking'
+import { Alert, PageTitle, Spinner } from '../../components/common/UI'
+import { getFirebaseErrorMessage } from '../../utils/validation'
 
 function relativeTime(notification: NotificationDocument): string {
   const date = notification.createdAt?.toDate()

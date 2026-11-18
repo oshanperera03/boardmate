@@ -11,14 +11,14 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { PageTitle, Alert, Field, primaryButtonClass, secondaryButtonClass, StatusPill } from '../components/common/UI'
-import { useAuth } from '../contexts/AuthContext'
-import { logout, requestPasswordReset } from '../services/auth/authService'
-import { createProperty, getOwnerProperties, getOwnerPropertyStats } from '../services/properties/propertyService'
-import { getOwnerRooms } from '../services/rooms/roomService'
-import { updateOwnProfile } from '../services/users/userService'
-import type { FacilityOption, GenderPolicy, PreferredContactMethod, PropertyDocument, PropertyType, RoomArrangement } from '../types/property'
-import { getFirebaseErrorMessage, sriLankanPhonePattern } from '../utils/validation'
+import { PageTitle, Alert, Field, primaryButtonClass, secondaryButtonClass, StatusPill } from '../../components/common/UI'
+import { useAuth } from '../../contexts/AuthContext'
+import { logout, requestPasswordReset } from '../../services/auth/authService'
+import { createProperty, getOwnerProperties, getOwnerPropertyStats } from '../../services/properties/propertyService'
+import { getOwnerRooms } from '../../services/rooms/roomService'
+import { updateOwnProfile } from '../../services/users/userService'
+import type { FacilityOption, GenderPolicy, PreferredContactMethod, PropertyDocument, PropertyType, RoomArrangement } from '../../types/property'
+import { getFirebaseErrorMessage, sriLankanPhonePattern } from '../../utils/validation'
 
 const propertyTypeOptions: Array<{ value: PropertyType; label: string }> = [
   { value: 'boarding_house', label: 'Boarding House' },
@@ -92,7 +92,6 @@ export function StudentDashboard() {
             <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">Search by campus, budget, room type, gender policy, facilities and availability.</p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link to="/student/search" className={primaryButtonClass}>Find accommodation <ArrowRight size={16} /></Link>
-              <Link to="/student/boardings" className={secondaryButtonClass}>Browse boardings</Link>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">

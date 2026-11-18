@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Check, Clock3, Eye, ShieldAlert, Users, X } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
-import { Alert, Field, PageTitle, primaryButtonClass, secondaryButtonClass, Spinner, StatusPill } from '../components/common/UI'
-import { getPendingProperties, reviewProperty } from '../services/properties/propertyService'
-import { getAllUsers, getOwner, getOwners, getPendingOwners, reviewOwner, suspendOwner } from '../services/users/userService'
-import type { PropertyDocument } from '../types/property'
-import type { UserProfile } from '../types/user'
-import { getFirebaseErrorMessage } from '../utils/validation'
+import { Alert, Field, PageTitle, primaryButtonClass, secondaryButtonClass, Spinner, StatusPill } from '../../components/common/UI'
+import { getPendingProperties, reviewProperty } from '../../services/properties/propertyService'
+import { getAllUsers, getOwner, getOwners, getPendingOwners, reviewOwner, suspendOwner } from '../../services/users/userService'
+import type { PropertyDocument } from '../../types/property'
+import type { UserProfile } from '../../types/user'
+import { getFirebaseErrorMessage } from '../../utils/validation'
 
 function getDate(value: UserProfile['createdAt']): string {
   if (!value || typeof value.toDate !== 'function') return '—'

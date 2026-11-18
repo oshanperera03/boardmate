@@ -1,24 +1,15 @@
 import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute, AuthenticatedRedirect } from './components/auth/ProtectedRoute'
 import { AppLayout } from './components/layouts/AppLayout'
-import { AdminDashboard, OwnerDetailsPage, OwnerRequestsPage, OwnersListPage, PropertyRequestsPage, RegisteredUsersPage } from './pages/AdminPages'
-import { ForgotPasswordPage, LandingPage, LoginPage, RegistrationPage } from './pages/PublicPages'
-import { OwnerRoomsPage, RoomDetailsPage, RoomFormPage } from './pages/RoomPages'
-import { StudentPropertyDetailsPage, StudentSearchPage } from './pages/DiscoveryPages'
-import { OwnerBookingsPage, StudentBookingsPage } from './pages/BookingPages'
-import { NotificationsPage } from './pages/NotificationPages'
-import {
-  AccountSuspendedPage,
-  OwnerDashboard,
-  OwnerPendingPage,
-  OwnerPropertiesPage,
-  OwnerPropertyFormPage,
-  OwnerStatusPage,
-  ProfilePage,
-  StudentDashboard,
-  StudentSettingsPage,
-} from './pages/RolePages'
-import { StudentBoardingsPage } from './pages/StudentBoardingsPage'
+import { AdminDashboard, OwnerDetailsPage, OwnerRequestsPage, OwnersListPage, PropertyRequestsPage, RegisteredUsersPage } from './pages/admin/AdminPages'
+import { ForgotPasswordPage, LandingPage, LoginPage, RegistrationPage } from './pages/public/PublicPages'
+import { OwnerRoomsPage, RoomDetailsPage, RoomFormPage } from './pages/owner/RoomPages'
+import { OwnerDashboard, OwnerPendingPage, OwnerPropertiesPage, OwnerPropertyFormPage, OwnerStatusPage } from './pages/owner/OwnerPages'
+import { StudentPropertyDetailsPage, StudentSearchPage } from './pages/student/DiscoveryPages'
+import { ProfilePage, StudentDashboard, StudentSettingsPage } from './pages/student/StudentPages'
+import { OwnerBookingsPage, StudentBookingsPage } from './pages/shared/BookingPages'
+import { NotificationsPage } from './pages/shared/NotificationPages'
+import { AccountSuspendedPage } from './pages/shared/RolePages'
 
 function NotFound() {
   return (
@@ -49,7 +40,6 @@ export default function App() {
           <Route path="/student/properties/:propertyId" element={<StudentPropertyDetailsPage />} />
           <Route path="/student/bookings" element={<StudentBookingsPage />} />
           <Route path="/student/notifications" element={<NotificationsPage />} />
-          <Route path="/student/boardings" element={<StudentBoardingsPage />} />
           <Route path="/student/profile" element={<ProfilePage />} />
           <Route path="/student/settings" element={<StudentSettingsPage />} />
         </Route>
