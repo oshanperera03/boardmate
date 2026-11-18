@@ -243,7 +243,11 @@ service cloud.firestore {
           && data.studentName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.fullName;
       }
 
-      allow get, list: if signedIn() && approvedProperty(resource.data.propertyId);
+      // Review documents contain public display content. Write access remains
+      // restricted below, while signed-in users need to be able to query the
+      // property review list without Firestore rejecting the query as an
+      // unevaluable rule filter.
+      allow get, list: if signedIn();
 
       allow create: if activeStudent()
         && request.resource.data.keys().hasOnly([
