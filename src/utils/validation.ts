@@ -16,6 +16,12 @@ export function getFirebaseErrorMessage(error: unknown): string {
     'permission-denied': 'You do not have permission to perform this action.',
     'functions/permission-denied': 'You do not have permission to perform this action.',
     'functions/unauthenticated': 'Please sign in again and retry.',
+    'functions/not-found': 'Booking service is not deployed yet. Please try again after the Firebase upgrade.',
+    'functions/unavailable': 'Booking service is temporarily unavailable. Please try again.',
+    'functions/internal': 'Booking service is not available yet. Cloud Functions must be deployed first.',
+    'functions/failed-precondition': 'This booking cannot be submitted because the room or account is no longer eligible.',
+    'functions/invalid-argument': 'Please check the booking details and try again.',
+    'firestore/permission-denied': 'You do not have permission to perform this action.',
   }
   if (code in messages) return messages[code]
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.'

@@ -100,6 +100,7 @@ export function StudentDashboard() {
       </section>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-white p-5"><p className="text-sm font-semibold text-slate-800">Keep your details up to date</p><p className="mt-1 text-sm leading-6 text-slate-500">Your contact information helps us keep your account accurate.</p><Link to="/student/profile" className="mt-3 inline-block text-sm font-semibold text-[#183b63]">Edit profile →</Link></div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5"><p className="text-sm font-semibold text-slate-800">My bookings</p><p className="mt-1 text-sm leading-6 text-slate-500">View your request status, cancellations and owner decisions.</p><Link to="/student/bookings" className="mt-3 inline-block text-sm font-semibold text-[#183b63]">Open bookings →</Link></div>
         <div className="rounded-xl border border-slate-200 bg-white p-5"><p className="text-sm font-semibold text-slate-800">Account security</p><p className="mt-1 text-sm leading-6 text-slate-500">Manage your sign-in and password settings.</p><Link to="/student/settings" className="mt-3 inline-block text-sm font-semibold text-[#183b63]">Account settings →</Link></div>
       </div>
     </>
@@ -246,6 +247,13 @@ export function OwnerDashboard() {
           <div className="rounded-xl bg-amber-50 p-4"><p className="text-xs text-amber-700">Partially available</p><p className="mt-2 text-2xl font-bold text-amber-700">{roomStats.partiallyAvailable}</p></div>
           <div className="rounded-xl bg-rose-50 p-4"><p className="text-xs text-rose-700">Occupied</p><p className="mt-2 text-2xl font-bold text-rose-700">{roomStats.occupied}</p></div>
           <div className="rounded-xl bg-slate-100 p-4"><p className="text-xs text-slate-600">Temporarily unavailable</p><p className="mt-2 text-2xl font-bold text-slate-700">{roomStats.temporarilyUnavailable}</p></div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-blue-100 bg-white p-6 sm:p-7">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 className="text-lg font-bold text-slate-900">Booking management</h2><p className="mt-1 text-sm text-slate-500">Review student requests, accept or reject bookings, and complete confirmed stays.</p></div>
+          <Link to="/owner/bookings" className={secondaryButtonClass}>Open bookings</Link>
         </div>
       </section>
 

@@ -136,5 +136,54 @@ service cloud.firestore {
       allow delete: if (isAdmin() && resource.data.currentOccupants == 0)
         || (approvedOwner() && resource.data.ownerId == request.auth.uid && resource.data.currentOccupants == 0);
     }
+
+    match /bookings/{bookingId} {
+      function bookingStudent() {
+        return signedIn() && resource.data.studentId == request.auth.uid;
+      }
+
+      function bookingOwner() {
+        return signedIn()
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner'
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approvalStatus == 'approved'
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus == 'active'
+          && resource.data.ownerId == request.auth.uid;
+      }
+
+      allow create: if signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus == 'active'
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.ownerId == get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.ownerId
+        && get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.approvalStatus == 'approved'
+        && get(/databases/$(database)/documents/rooms/$(request.resource.data.roomId)).data.propertyId == request.resource.data.propertyId
+        && get(/databases/$(database)/documents/rooms/$(request.resource.data.roomId)).data.ownerId == request.resource.data.ownerId
+        && get(/databases/$(database)/documents/rooms/$(request.resource.data.roomId)).data.isActive == true
+        && request.resource.data.numberOfOccupants is int
+        && request.resource.data.numberOfOccupants > 0
+        && request.resource.data.bookingStatus == 'pending'
+        && request.resource.data.rejectionReason == null;
+
+      allow update: if (bookingStudent()
+        && resource.data.bookingStatus == 'pending'
+        && request.resource.data.bookingStatus == 'cancelled'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus', 'updatedAt']))
+        || (bookingOwner()
+        && resource.data.bookingStatus == 'pending'
+        && request.resource.data.bookingStatus in ['accepted', 'rejected', 'expired']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus', 'rejectionReason', 'updatedAt']));
+
+      allow delete: if false;
+      allow get, list: if isAdmin() || bookingStudent() || bookingOwner();
+    }
+
+    match /notifications/{notificationId} {
+      allow create, delete: if false;
+      allow get: if signedIn() && resource.data.userId == request.auth.uid;
+      allow list: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+    }
   }
 }

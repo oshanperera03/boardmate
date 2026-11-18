@@ -5,6 +5,7 @@ import { AdminDashboard, OwnerDetailsPage, OwnerRequestsPage, OwnersListPage, Pr
 import { ForgotPasswordPage, LandingPage, LoginPage, RegistrationPage } from './pages/PublicPages'
 import { OwnerRoomsPage, RoomDetailsPage, RoomFormPage } from './pages/RoomPages'
 import { StudentPropertyDetailsPage, StudentSearchPage } from './pages/DiscoveryPages'
+import { OwnerBookingsPage, StudentBookingsPage } from './pages/BookingPages'
 import {
   AccountSuspendedPage,
   OwnerDashboard,
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/student" element={<StudentDashboard />} />
           <Route path="/student/search" element={<StudentSearchPage />} />
           <Route path="/student/properties/:propertyId" element={<StudentPropertyDetailsPage />} />
+          <Route path="/student/bookings" element={<StudentBookingsPage />} />
           <Route path="/student/profile" element={<ProfilePage />} />
           <Route path="/student/settings" element={<StudentSettingsPage />} />
         </Route>
@@ -68,6 +70,7 @@ export default function App() {
           <Route path="/owner/rooms/new" element={<RoomFormPage />} />
           <Route path="/owner/rooms/:roomId" element={<RoomDetailsPage />} />
           <Route path="/owner/rooms/:roomId/edit" element={<RoomFormPage />} />
+          <Route path="/owner/bookings" element={<OwnerBookingsPage />} />
           <Route path="/owner/profile" element={<ProfilePage owner />} />
         </Route>
       </Route>
