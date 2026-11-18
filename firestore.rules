@@ -193,6 +193,11 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus', 'rejectionReason', 'updatedAt']))
         || (bookingOwner()
         && resource.data.bookingStatus == 'accepted'
+        && (!('paymentConfirmed' in resource.data) || resource.data.paymentConfirmed != true)
+        && request.resource.data.bookingStatus == 'cancelled'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus', 'rejectionReason', 'updatedAt']))
+        || (bookingOwner()
+        && resource.data.bookingStatus == 'accepted'
         && resource.data.paymentConfirmed == true
         && request.resource.data.bookingStatus == 'completed'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus', 'updatedAt']))

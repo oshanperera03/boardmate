@@ -257,6 +257,41 @@ export async function rejectBooking(bookingId: string, reason = '') {
   })
 }
 
+export async function cancelAcceptedBookingByOwner(bookingId: string, reason = '') {
+  const ownerId = auth.currentUser?.uid
+  if (!ownerId) throw new Error('Please sign in again.')
+  if (reason.length > 1000) throw new Error('The cancellation reason is too long.')
+
+  await runTransaction(db, async (transaction) => {
+    const bookingRef = doc(db, 'bookings', bookingId)
+    const bookingSnapshot = await transaction.get(bookingRef)
+    if (!bookingSnapshot.exists()) throw new Error('Booking not found.')
+
+    const booking = bookingSnapshot.data()
+    if (booking.ownerId !== ownerId) throw new Error('This booking belongs to another owner.')
+    if (booking.bookingStatus !== 'accepted') throw new Error('Only accepted bookings can be cancelled.')
+    if (booking.paymentConfirmed === true) throw new Error('A completed or paid booking cannot be cancelled.')
+
+    transaction.update(bookingRef, {
+      bookingStatus: 'cancelled',
+      rejectionReason: reason.trim() || null,
+      updatedAt: serverTimestamp(),
+    })
+    transaction.set(createNotificationRef('booking_cancelled_by_owner', bookingId), {
+      recipientId: booking.studentId,
+      title: 'Booking Cancelled',
+      message: reason.trim()
+        ? `The owner cancelled your accepted booking: ${reason.trim()}`
+        : 'The owner cancelled your accepted booking.',
+      type: 'booking_cancelled',
+      bookingId,
+      propertyId: booking.propertyId,
+      isRead: false,
+      createdAt: serverTimestamp(),
+    })
+  })
+}
+
 export async function cancelBooking(bookingId: string) {
   const studentId = auth.currentUser?.uid
   if (!studentId) throw new Error('Please sign in again.')

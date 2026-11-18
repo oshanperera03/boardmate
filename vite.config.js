@@ -5,4 +5,19 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rolldownOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('/firebase/') || id.includes('/@firebase/')) return 'firebase'
+          if (
+            id.includes('/node_modules/react/') ||
+            id.includes('/node_modules/react-dom/') ||
+            id.includes('/node_modules/react-router/')
+          ) return 'react'
+          if (id.includes('/node_modules/lucide-react/')) return 'icons'
+        },
+      },
+    },
+  },
 })

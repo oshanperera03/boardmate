@@ -95,6 +95,21 @@ function formatPrice(value: number): string {
   return `LKR ${value.toLocaleString('en-LK')}`
 }
 
+function formatRoomTimestamp(room: RoomDocument): string {
+  const timestamp = room.updatedAt || room.createdAt
+  return timestamp?.toDate().toLocaleDateString('en-LK', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }) || 'Recently'
+}
+
+function isNewRoom(room: RoomDocument): boolean {
+  const created = room.createdAt?.toDate()
+  if (!created) return false
+  return Date.now() - created.getTime() <= 7 * 24 * 60 * 60 * 1000
+}
+
 function ownerOnly(profile: ReturnType<typeof useAuth>['profile']): boolean {
   return Boolean(profile?.role === 'owner' && profile.approvalStatus === 'approved' && profile.accountStatus === 'active')
 }
@@ -218,6 +233,10 @@ export function OwnerRoomsPage() {
                 <div><p className="text-xs text-slate-500">Available spaces</p><p className="mt-1 font-semibold">{room.availableSpaces}</p></div>
                 <div><p className="text-xs text-slate-500">Occupants</p><p className="mt-1 font-semibold">{room.currentOccupants}</p></div>
                 <div><p className="text-xs text-slate-500">Gender</p><p className="mt-1 font-semibold capitalize">{room.genderPolicy}</p></div>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+                {isNewRoom(room) && <StatusPill tone="blue">New room</StatusPill>}
+                <span className="text-xs text-slate-500">Last updated: {formatRoomTimestamp(room)}</span>
               </div>
               <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
                 <select aria-label={`Availability for ${room.roomName}`} value={room.availabilityStatus} onChange={(event) => void changeStatus(room, event.target.value as RoomAvailabilityStatus)} className="h-9 rounded-lg border border-slate-200 px-2 text-xs"><option value="" disabled>Update availability</option>{availabilityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
@@ -379,9 +398,14 @@ export function RoomDetailsPage() {
   return (
     <>
       <PageTitle eyebrow="Owner workspace" title={room.roomName} description="View room details and current availability." action={<Link to={`/owner/rooms/${room.id}/edit`} className={primaryButtonClass}><Pencil size={16} /> Edit room</Link>} />
+      {isNewRoom(room) && (
+        <div className="mb-5 max-w-4xl">
+          <StatusPill tone="blue">New room</StatusPill>
+        </div>
+      )}
       <div className="grid max-w-4xl gap-5 lg:grid-cols-2">
         <section className="rounded-2xl border border-slate-200 bg-white p-6"><div className="flex items-start justify-between gap-3"><div><p className="text-sm text-slate-500">{property?.propertyName || 'Property'}</p><h2 className="mt-1 text-xl font-bold text-slate-900">{roomTypeLabel(room.roomType)}</h2></div><StatusPill tone={statusTone[room.availabilityStatus]}>{statusLabel(room.availabilityStatus)}</StatusPill></div><dl className="mt-6 grid grid-cols-2 gap-4 text-sm"><div><dt className="text-slate-500">Monthly rent</dt><dd className="mt-1 font-semibold">{formatPrice(room.monthlyPrice)}</dd></div><div><dt className="text-slate-500">Advance</dt><dd className="mt-1 font-semibold">{formatPrice(room.advancePayment)}</dd></div><div><dt className="text-slate-500">Maximum occupants</dt><dd className="mt-1 font-semibold">{room.maximumOccupants}</dd></div><div><dt className="text-slate-500">Current occupants</dt><dd className="mt-1 font-semibold">{room.currentOccupants}</dd></div><div><dt className="text-slate-500">Available spaces</dt><dd className="mt-1 font-semibold">{room.availableSpaces}</dd></div><div><dt className="text-slate-500">Gender policy</dt><dd className="mt-1 font-semibold capitalize">{room.genderPolicy}</dd></div></dl></section>
-        <section className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-bold text-slate-900">Facilities and charges</h2><p className="mt-3 text-sm text-slate-600">{room.facilities.length ? room.facilities.map((facility) => facility.replaceAll('_', ' ')).join(', ') : 'No facilities listed.'}</p><dl className="mt-6 grid gap-3 text-sm"><div className="flex justify-between gap-4"><dt className="text-slate-500">Additional charges</dt><dd className="font-semibold">{formatPrice(room.additionalCharges)}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">Utilities included</dt><dd className="font-semibold">{room.utilitiesIncluded ? 'Yes' : 'No'}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">Sharing arrangement</dt><dd className="font-semibold capitalize">{room.sharingArrangement.replace('_', ' ')}</dd></div></dl></section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-bold text-slate-900">Facilities and charges</h2><p className="mt-3 text-sm text-slate-600">{room.facilities.length ? room.facilities.map((facility) => facility.replaceAll('_', ' ')).join(', ') : 'No facilities listed.'}</p><dl className="mt-6 grid gap-3 text-sm"><div className="flex justify-between gap-4"><dt className="text-slate-500">Additional charges</dt><dd className="font-semibold">{formatPrice(room.additionalCharges)}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">Utilities included</dt><dd className="font-semibold">{room.utilitiesIncluded ? 'Yes' : 'No'}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">Sharing arrangement</dt><dd className="font-semibold capitalize">{room.sharingArrangement.replace('_', ' ')}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">Last updated</dt><dd className="font-semibold">{formatRoomTimestamp(room)}</dd></div></dl></section>
       </div>
     </>
   )

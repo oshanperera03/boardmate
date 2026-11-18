@@ -79,6 +79,21 @@ function formatPrice(value: number): string {
   return `LKR ${value.toLocaleString('en-LK')}`
 }
 
+function formatRoomTimestamp(room: RoomDocument): string {
+  const timestamp = room.updatedAt || room.createdAt
+  return timestamp?.toDate().toLocaleDateString('en-LK', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }) || 'Recently'
+}
+
+function isNewRoom(room: RoomDocument): boolean {
+  const created = room.createdAt?.toDate()
+  if (!created) return false
+  return Date.now() - created.getTime() <= 7 * 24 * 60 * 60 * 1000
+}
+
 function propertyFacilities(property: PropertyDocument): string[] {
   return property.facilities.map((facility) => facility === 'meals_provided' ? 'meals' : facility)
 }
@@ -293,7 +308,56 @@ export function StudentPropertyDetailsPage() {
           </div>
         }
       />
-      <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]"><section className="rounded-2xl border border-slate-200 bg-white p-6"><PropertyPlaceholder /><h2 className="mt-5 text-xl font-bold text-slate-900">Property information</h2><dl className="mt-5 grid gap-4 text-sm"><div><dt className="text-slate-500">Location</dt><dd className="mt-1 font-semibold">{property.location.address}, {property.location.city}, {property.location.district}</dd></div><div><dt className="text-slate-500">Nearby campus</dt><dd className="mt-1 font-semibold">{property.location.nearbyCampus || 'Not specified'}</dd></div><div><dt className="text-slate-500">Gender policy</dt><dd className="mt-1 font-semibold capitalize">{property.genderPolicy}</dd></div><div><dt className="text-slate-500">Facilities</dt><dd className="mt-1 capitalize">{property.facilities.map((facility) => facility.replaceAll('_', ' ')).join(', ') || 'Not specified'}</dd></div></dl><p className="mt-5 text-sm leading-6 text-slate-600">{property.description}</p></section><section><div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-bold text-slate-900">Available rooms</h2><span className="text-sm text-slate-500">{rooms.length} found</span></div>{rooms.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">No rooms currently have available spaces.</div> : <div className="grid gap-4">{rooms.map((room) => <article key={room.id} className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-bold text-slate-900">{room.roomName}</h3><p className="mt-1 text-sm text-slate-500">{roomTypeLabel(room.roomType)} · {formatPrice(room.monthlyPrice)} per month</p></div><StatusPill tone={roomStatusTone(room.availabilityStatus)}>{roomStatusLabel(room.availabilityStatus)}</StatusPill></div><div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><div><p className="text-xs text-slate-500">Advance</p><p className="mt-1 font-semibold">{formatPrice(room.advancePayment)}</p></div><div><p className="text-xs text-slate-500">Capacity</p><p className="mt-1 font-semibold">{room.maximumOccupants}</p></div><div><p className="text-xs text-slate-500">Occupants</p><p className="mt-1 font-semibold">{room.currentOccupants}</p></div><div><p className="text-xs text-slate-500">Spaces left</p><p className="mt-1 font-semibold text-emerald-700">{room.availableSpaces}</p></div></div><p className="mt-4 text-sm capitalize text-slate-600">{room.genderPolicy} · {room.sharingArrangement.replace('_', ' ')} · {room.facilities.map((facility) => facility.replaceAll('_', ' ')).join(', ') || 'No facilities listed'}</p><div className="mt-4 flex justify-end"><button type="button" onClick={() => setSelectedRoom(room)} className={secondaryButtonClass}>Request booking</button></div></article>)}</div>}</section></div>
+      <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+        <section className="rounded-2xl border border-slate-200 bg-white p-6">
+          <PropertyPlaceholder />
+          <h2 className="mt-5 text-xl font-bold text-slate-900">Property information</h2>
+          <dl className="mt-5 grid gap-4 text-sm">
+            <div><dt className="text-slate-500">Location</dt><dd className="mt-1 font-semibold">{property.location.address}, {property.location.city}, {property.location.district}</dd></div>
+            <div><dt className="text-slate-500">Nearby campus</dt><dd className="mt-1 font-semibold">{property.location.nearbyCampus || 'Not specified'}</dd></div>
+            <div><dt className="text-slate-500">Distance from campus</dt><dd className="mt-1 font-semibold">{property.location.distanceFromCampus?.replaceAll('_', ' ') || 'Not specified'}</dd></div>
+            <div><dt className="text-slate-500">Gender policy</dt><dd className="mt-1 font-semibold capitalize">{property.genderPolicy}</dd></div>
+            <div><dt className="text-slate-500">Facilities</dt><dd className="mt-1 capitalize">{property.facilities.map((facility) => facility.replaceAll('_', ' ')).join(', ') || 'Not specified'}</dd></div>
+          </dl>
+        </section>
+        <section>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-slate-900">Available rooms</h2>
+            <span className="text-sm text-slate-500">{rooms.length} found</span>
+          </div>
+          {rooms.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">No rooms currently have available spaces.</div>
+          ) : (
+            <div className="grid gap-4">
+              {rooms.map((room) => (
+                <article key={room.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-bold text-slate-900">{room.roomName}</h3>
+                        {isNewRoom(room) && <StatusPill tone="blue">New</StatusPill>}
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">{roomTypeLabel(room.roomType)} · {formatPrice(room.monthlyPrice)} per month</p>
+                    </div>
+                    <StatusPill tone={roomStatusTone(room.availabilityStatus)}>{roomStatusLabel(room.availabilityStatus)}</StatusPill>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                    <div><p className="text-xs text-slate-500">Advance</p><p className="mt-1 font-semibold">{formatPrice(room.advancePayment)}</p></div>
+                    <div><p className="text-xs text-slate-500">Capacity</p><p className="mt-1 font-semibold">{room.maximumOccupants}</p></div>
+                    <div><p className="text-xs text-slate-500">Occupants</p><p className="mt-1 font-semibold">{room.currentOccupants}</p></div>
+                    <div><p className="text-xs text-slate-500">Spaces left</p><p className="mt-1 font-semibold text-emerald-700">{room.availableSpaces}</p></div>
+                  </div>
+                  <p className="mt-4 text-sm capitalize text-slate-600">{room.genderPolicy} · {room.sharingArrangement.replace('_', ' ')} · {room.facilities.map((facility) => facility.replaceAll('_', ' ')).join(', ') || 'No facilities listed'}</p>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                    <span className="text-xs text-slate-500">Last updated: {formatRoomTimestamp(room)}</span>
+                    <button type="button" onClick={() => setSelectedRoom(room)} className={secondaryButtonClass}>Request booking</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
       <section id="property-reviews" className="mt-8 scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

@@ -1,15 +1,40 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute, AuthenticatedRedirect } from './components/auth/ProtectedRoute'
 import { AppLayout } from './components/layouts/AppLayout'
-import { AdminDashboard, OwnerDetailsPage, OwnerRequestsPage, OwnersListPage, PropertyRequestsPage, RegisteredUsersPage } from './pages/admin/AdminPages'
-import { ForgotPasswordPage, LandingPage, LoginPage, RegistrationPage } from './pages/public/PublicPages'
-import { OwnerRoomsPage, RoomDetailsPage, RoomFormPage } from './pages/owner/RoomPages'
-import { OwnerDashboard, OwnerPendingPage, OwnerPropertiesPage, OwnerPropertyFormPage, OwnerStatusPage } from './pages/owner/OwnerPages'
-import { StudentPropertyDetailsPage, StudentSearchPage } from './pages/student/DiscoveryPages'
-import { ProfilePage, StudentDashboard, StudentSettingsPage } from './pages/student/StudentPages'
-import { OwnerBookingsPage, StudentBookingsPage } from './pages/shared/BookingPages'
-import { NotificationsPage } from './pages/shared/NotificationPages'
-import { AccountSuspendedPage } from './pages/shared/RolePages'
+import { Spinner } from './components/common/UI'
+
+const LandingPage = lazy(() => import('./pages/public/PublicPages').then((module) => ({ default: module.LandingPage })))
+const RegistrationPage = lazy(() => import('./pages/public/PublicPages').then((module) => ({ default: module.RegistrationPage })))
+const LoginPage = lazy(() => import('./pages/public/PublicPages').then((module) => ({ default: module.LoginPage })))
+const ForgotPasswordPage = lazy(() => import('./pages/public/PublicPages').then((module) => ({ default: module.ForgotPasswordPage })))
+
+const AdminDashboard = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.AdminDashboard })))
+const OwnerRequestsPage = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.OwnerRequestsPage })))
+const PropertyRequestsPage = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.PropertyRequestsPage })))
+const OwnerDetailsPage = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.OwnerDetailsPage })))
+const RegisteredUsersPage = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.RegisteredUsersPage })))
+const OwnersListPage = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.OwnersListPage })))
+
+const StudentDashboard = lazy(() => import('./pages/student/StudentPages').then((module) => ({ default: module.StudentDashboard })))
+const StudentSettingsPage = lazy(() => import('./pages/student/StudentPages').then((module) => ({ default: module.StudentSettingsPage })))
+const StudentSearchPage = lazy(() => import('./pages/student/DiscoveryPages').then((module) => ({ default: module.StudentSearchPage })))
+const StudentPropertyDetailsPage = lazy(() => import('./pages/student/DiscoveryPages').then((module) => ({ default: module.StudentPropertyDetailsPage })))
+const StudentBookingsPage = lazy(() => import('./pages/shared/BookingPages').then((module) => ({ default: module.StudentBookingsPage })))
+const ProfilePage = lazy(() => import('./pages/student/StudentPages').then((module) => ({ default: module.ProfilePage })))
+
+const OwnerDashboard = lazy(() => import('./pages/owner/OwnerPages').then((module) => ({ default: module.OwnerDashboard })))
+const OwnerPendingPage = lazy(() => import('./pages/owner/OwnerPages').then((module) => ({ default: module.OwnerPendingPage })))
+const OwnerStatusPage = lazy(() => import('./pages/owner/OwnerPages').then((module) => ({ default: module.OwnerStatusPage })))
+const OwnerPropertiesPage = lazy(() => import('./pages/owner/OwnerPages').then((module) => ({ default: module.OwnerPropertiesPage })))
+const OwnerPropertyFormPage = lazy(() => import('./pages/owner/OwnerPages').then((module) => ({ default: module.OwnerPropertyFormPage })))
+const OwnerRoomsPage = lazy(() => import('./pages/owner/RoomPages').then((module) => ({ default: module.OwnerRoomsPage })))
+const RoomFormPage = lazy(() => import('./pages/owner/RoomPages').then((module) => ({ default: module.RoomFormPage })))
+const RoomDetailsPage = lazy(() => import('./pages/owner/RoomPages').then((module) => ({ default: module.RoomDetailsPage })))
+const OwnerBookingsPage = lazy(() => import('./pages/shared/BookingPages').then((module) => ({ default: module.OwnerBookingsPage })))
+
+const NotificationsPage = lazy(() => import('./pages/shared/NotificationPages').then((module) => ({ default: module.NotificationsPage })))
+const AccountSuspendedPage = lazy(() => import('./pages/shared/RolePages').then((module) => ({ default: module.AccountSuspendedPage })))
 
 function NotFound() {
   return (
@@ -21,7 +46,8 @@ function NotFound() {
 
 export default function App() {
   return (
-    <Routes>
+    <Suspense fallback={<Spinner label="Loading page" />}>
+      <Routes>
       <Route element={<AuthenticatedRedirect />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/register" element={<RegistrationPage />} />
@@ -82,7 +108,8 @@ export default function App() {
         </Route>
       </Route>
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   )
 }

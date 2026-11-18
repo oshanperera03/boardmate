@@ -56,15 +56,28 @@ const facilityOptions: Array<{ value: FacilityOption; label: string }> = [
   { value: 'meals_provided', label: 'Meals provided' },
 ]
 
+const campusOptions = [
+  { value: 'SLIIT Malabe', label: 'SLIIT Malabe' },
+  { value: 'CINEC Campus', label: 'CINEC Campus' },
+]
+
+const distanceOptions = [
+  { value: 'within_1_km', label: 'Within 1 km' },
+  { value: 'within_3_km', label: 'Within 3 km' },
+  { value: 'within_5_km', label: 'Within 5 km' },
+  { value: 'within_10_km', label: 'Within 10 km' },
+  { value: 'over_10_km', label: 'More than 10 km' },
+]
+
 const initialForm = {
   propertyName: '',
-  description: '',
   propertyType: 'boarding_house' as PropertyType,
   province: '',
   district: '',
   city: '',
   address: '',
   nearbyCampus: '',
+  campusDistance: '',
   mapLink: '',
   genderPolicy: 'boys' as GenderPolicy,
   roomArrangement: 'separate_rooms' as RoomArrangement,
@@ -336,12 +349,12 @@ export function OwnerPropertyFormPage() {
     const nextErrors: Record<string, string> = {}
 
     if (!form.propertyName.trim()) nextErrors.propertyName = 'Property name is required.'
-    if (!form.description.trim()) nextErrors.description = 'Property description is required.'
     if (!form.province.trim()) nextErrors.province = 'Province is required.'
     if (!form.district.trim()) nextErrors.district = 'District is required.'
     if (!form.city.trim()) nextErrors.city = 'City or town is required.'
     if (!form.address.trim()) nextErrors.address = 'Full address is required.'
     if (!form.nearbyCampus.trim()) nextErrors.nearbyCampus = 'Nearest university or campus is required.'
+    if (!form.campusDistance.trim()) nextErrors.campusDistance = 'Distance from campus is required.'
     if (!form.mapLink.trim()) nextErrors.mapLink = 'Map link is required.'
     if (!form.genderPolicy) nextErrors.genderPolicy = 'Select a gender policy.'
     if (!form.roomArrangement) nextErrors.roomArrangement = 'Select a room arrangement.'
@@ -375,7 +388,7 @@ export function OwnerPropertyFormPage() {
       await createProperty({
         ownerId: profile.uid,
         propertyName: form.propertyName.trim(),
-        description: form.description.trim(),
+        description: '',
         propertyType: form.propertyType,
         location: {
           province: form.province.trim(),
@@ -383,6 +396,7 @@ export function OwnerPropertyFormPage() {
           city: form.city.trim(),
           address: form.address.trim(),
           nearbyCampus: form.nearbyCampus.trim(),
+          distanceFromCampus: form.campusDistance,
           mapLink: form.mapLink.trim(),
         },
         genderPolicy: form.genderPolicy,
@@ -417,11 +431,6 @@ export function OwnerPropertyFormPage() {
           <div className="grid gap-5">
             <Field label="Property name" value={form.propertyName} onChange={(event) => updateField('propertyName', event.target.value)} required />
             {errors.propertyName && <p className="text-sm text-rose-600">{errors.propertyName}</p>}
-            <div className="grid gap-1.5">
-              <label className="text-sm font-semibold text-slate-700">Property description</label>
-              <textarea value={form.description} onChange={(event) => updateField('description', event.target.value)} rows={5} className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" required />
-              {errors.description && <p className="text-sm text-rose-600">{errors.description}</p>}
-            </div>
             <div className="grid gap-2">
               <label className="text-sm font-semibold text-slate-700">Property type</label>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -447,7 +456,22 @@ export function OwnerPropertyFormPage() {
             </div>
             <div className="grid gap-5 md:grid-cols-2">
               <Field label="City or town" value={form.city} onChange={(event) => updateField('city', event.target.value)} required />
-              <Field label="Nearest university or campus" value={form.nearbyCampus} onChange={(event) => updateField('nearbyCampus', event.target.value)} required />
+              <div className="grid gap-1.5">
+                <label className="text-sm font-semibold text-slate-700">Nearest university or campus</label>
+                <select value={form.nearbyCampus} onChange={(event) => updateField('nearbyCampus', event.target.value)} required className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                  <option value="">Select campus</option>
+                  {campusOptions.map((campus) => <option key={campus.value} value={campus.value}>{campus.label}</option>)}
+                </select>
+                {errors.nearbyCampus && <p className="text-sm text-rose-600">{errors.nearbyCampus}</p>}
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-sm font-semibold text-slate-700">Distance from campus</label>
+              <select value={form.campusDistance} onChange={(event) => updateField('campusDistance', event.target.value)} required className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                <option value="">Select distance range</option>
+                {distanceOptions.map((distance) => <option key={distance.value} value={distance.value}>{distance.label}</option>)}
+              </select>
+              {errors.campusDistance && <p className="text-sm text-rose-600">{errors.campusDistance}</p>}
             </div>
             <div>
               <Field label="Full address" value={form.address} onChange={(event) => updateField('address', event.target.value)} required />
@@ -623,10 +647,10 @@ export function OwnerPropertiesPage() {
                     </div>
                     <StatusPill tone={statusTone[property.approvalStatus]}>{property.approvalStatus}</StatusPill>
                   </div>
-                  <p className="text-sm leading-6 text-slate-600">{property.description}</p>
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     <div className="rounded-xl bg-slate-50 px-3 py-2"><p className="text-[11px] uppercase tracking-wider text-slate-500">Location</p><p className="mt-1 text-sm font-medium text-slate-800">{property.location.city}, {property.location.district}</p></div>
                     <div className="rounded-xl bg-slate-50 px-3 py-2"><p className="text-[11px] uppercase tracking-wider text-slate-500">Nearby campus</p><p className="mt-1 text-sm font-medium text-slate-800">{property.location.nearbyCampus}</p></div>
+                    <div className="rounded-xl bg-slate-50 px-3 py-2"><p className="text-[11px] uppercase tracking-wider text-slate-500">Distance from campus</p><p className="mt-1 text-sm font-medium text-slate-800">{property.location.distanceFromCampus?.replaceAll('_', ' ') || 'Not specified'}</p></div>
                     <div className="rounded-xl bg-slate-50 px-3 py-2"><p className="text-[11px] uppercase tracking-wider text-slate-500">Gender policy</p><p className="mt-1 text-sm font-medium text-slate-800">{genderOptions.find((item) => item.value === property.genderPolicy)?.label}</p></div>
                     <div className="rounded-xl bg-slate-50 px-3 py-2"><p className="text-[11px] uppercase tracking-wider text-slate-500">Submitted</p><p className="mt-1 text-sm font-medium text-slate-800">{property.createdAt ? new Date(property.createdAt.toDate()).toLocaleDateString() : '—'}</p></div>
                     <div className="rounded-xl bg-slate-50 px-3 py-2"><p className="text-[11px] uppercase tracking-wider text-slate-500">Contact</p><p className="mt-1 text-sm font-medium text-slate-800">{property.contact.name}</p></div>

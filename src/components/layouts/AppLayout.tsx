@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Building2,
   Bell,
@@ -33,6 +33,7 @@ export function AppLayout() {
   const [logoutError, setLogoutError] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationDocument[]>([])
+  const notificationsRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const role = profile?.role
 
@@ -40,6 +41,28 @@ export function AppLayout() {
     if (!profile?.uid) return
     return subscribeToNotifications(profile.uid, setNotifications)
   }, [profile?.uid])
+
+  useEffect(() => {
+    if (!notificationsOpen) return
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!notificationsRef.current?.contains(event.target as Node)) {
+        setNotificationsOpen(false)
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setNotificationsOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [notificationsOpen])
   const nav: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = role === 'admin'
     ? [
         { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
@@ -130,7 +153,7 @@ export function AppLayout() {
           </button>
           <span className="hidden text-sm font-medium text-slate-500 sm:block">A trusted place to find your next home</span>
           <div className="ml-auto flex items-center gap-3">
-            <div className="relative">
+            <div ref={notificationsRef} className="relative">
               <button type="button" onClick={() => setNotificationsOpen((open) => !open)} className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100" aria-label="Notifications">
                 <Bell size={19} />
                 {notifications.some((notification) => !notification.isRead) && <span className="absolute right-1 top-1 size-2 rounded-full bg-rose-500 ring-2 ring-white" />}
