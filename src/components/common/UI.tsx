@@ -16,20 +16,27 @@ export function Brand({ light = false }: { light?: boolean }) {
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string
   hint?: string
+  error?: string
 }
 
-export function Field({ label, hint, id, ...props }: FieldProps) {
+export function Field({ label, hint, error, id, ...props }: FieldProps) {
   const generatedId = useId()
   const inputId = id || props.name || generatedId
+  const hintId = hint ? `${inputId}-hint` : undefined
+  const errorId = error ? `${inputId}-error` : undefined
+  const describedBy = [props['aria-describedby'], hintId, errorId].filter(Boolean).join(' ') || undefined
   return (
     <div className="grid gap-1.5">
       <label htmlFor={inputId} className="text-sm font-semibold text-slate-700">{label}</label>
       <input
         id={inputId}
-        className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-50"
+        className={`h-11 w-full rounded-lg border bg-white px-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 ${error ? 'border-rose-300 focus:border-rose-500 focus:ring-4 focus:ring-rose-100' : 'border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100'}`}
         {...props}
+        aria-invalid={error ? true : props['aria-invalid']}
+        aria-describedby={describedBy}
       />
-      {hint && <p className="text-xs leading-relaxed text-slate-500">{hint}</p>}
+      {hint && <p id={hintId} className="text-xs leading-relaxed text-slate-500">{hint}</p>}
+      {error && <p id={errorId} role="alert" className="text-sm text-rose-700">{error}</p>}
     </div>
   )
 }

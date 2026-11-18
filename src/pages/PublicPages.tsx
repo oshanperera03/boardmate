@@ -122,27 +122,42 @@ export function RegistrationPage({ owner = false }: { owner?: boolean }) {
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
+    setFieldErrors({})
     const data = new FormData(event.currentTarget)
     const fullName = String(data.get('fullName') || '').trim()
     const email = String(data.get('email') || '').trim()
     const phoneNumber = String(data.get('phoneNumber') || '').replace(/[\s()-]/g, '')
-    if (!fullName || !email || !phoneNumber || !password || !confirmation) return setError('Please complete every field.')
-    if (!emailPattern.test(email)) return setError('Enter a valid email address.')
-    if (!sriLankanPhonePattern.test(phoneNumber)) return setError('Enter a valid Sri Lankan mobile number, such as 0712345678 or +94712345678.')
-    if (!strongPasswordPattern.test(password)) return setError('Use at least 8 characters with uppercase and lowercase letters, a number, and a symbol.')
-    if (password !== confirmation) return setError('Your passwords do not match.')
+    const requiredErrors: Record<string, string> = {}
+    if (!fullName) requiredErrors.fullName = 'Enter your full name.'
+    if (!email) requiredErrors.email = 'Enter your email address.'
+    if (!phoneNumber) requiredErrors.phoneNumber = 'Enter your mobile number.'
+    if (!password) requiredErrors.password = 'Enter a password.'
+    if (!confirmation) requiredErrors.confirmation = 'Confirm your password.'
+    if (Object.keys(requiredErrors).length) return setFieldErrors(requiredErrors)
+    if (!emailPattern.test(email)) return setFieldErrors({ email: 'Enter a valid email address.' })
+    if (!sriLankanPhonePattern.test(phoneNumber)) return setFieldErrors({ phoneNumber: 'Enter a valid Sri Lankan mobile number, such as 0712345678 or +94712345678.' })
+    if (!strongPasswordPattern.test(password)) return setFieldErrors({ password: 'Use at least 8 characters with uppercase and lowercase letters, a number, and a symbol.' })
+    if (password !== confirmation) return setFieldErrors({ confirmation: 'Your passwords do not match.' })
     setBusy(true)
     try {
       await register({ fullName, email, phoneNumber, password, role: owner ? 'owner' : 'student' })
       navigate('/', { replace: true })
     } catch (issue) {
-      setError(getFirebaseErrorMessage(issue))
+      const code = typeof issue === 'object' && issue && 'code' in issue ? String(issue.code) : ''
+      const field = code === 'auth/email-already-in-use' || code === 'auth/invalid-email'
+        ? 'email'
+        : code === 'auth/weak-password'
+          ? 'password'
+          : ''
+      if (field) setFieldErrors({ [field]: getFirebaseErrorMessage(issue) })
+      else setError(getFirebaseErrorMessage(issue))
     } finally {
       setBusy(false)
     }
@@ -152,11 +167,11 @@ export function RegistrationPage({ owner = false }: { owner?: boolean }) {
     <AuthCard title={owner ? 'Register as a boarding owner' : 'Create your student account'} description={owner ? 'Submit your details to request an owner account. Access is enabled after review.' : 'Create a free account and start building your student profile.'}>
       <form className="grid gap-4" onSubmit={submit} noValidate>
         {error && <Alert>{error}</Alert>}
-        <Field name="fullName" label="Full name" autoComplete="name" required maxLength={100} />
-        <Field name="email" label="Email address" type="email" autoComplete="email" required />
-        <Field name="phoneNumber" label="Sri Lankan mobile number" type="tel" autoComplete="tel" placeholder="071 234 5678" required />
-        <Field label="Password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} required hint="At least 8 characters, including upper- and lowercase letters, a number, and a symbol." />
-        <Field label="Confirm password" type="password" autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required />
+        <Field name="fullName" label="Full name" autoComplete="name" required maxLength={100} error={fieldErrors.fullName} onChange={() => setFieldErrors((current) => ({ ...current, fullName: '' }))} />
+        <Field name="email" label="Email address" type="email" autoComplete="email" required error={fieldErrors.email} onChange={() => setFieldErrors((current) => ({ ...current, email: '' }))} />
+        <Field name="phoneNumber" label="Sri Lankan mobile number" type="tel" autoComplete="tel" placeholder="071 234 5678" required error={fieldErrors.phoneNumber} onChange={() => setFieldErrors((current) => ({ ...current, phoneNumber: '' }))} />
+        <Field name="password" label="Password" type="password" autoComplete="new-password" value={password} onChange={(event) => { setPassword(event.target.value); setFieldErrors((current) => ({ ...current, password: '' })) }} required hint="At least 8 characters, including upper- and lowercase letters, a number, and a symbol." error={fieldErrors.password} />
+        <Field name="confirmation" label="Confirm password" type="password" autoComplete="new-password" value={confirmation} onChange={(event) => { setConfirmation(event.target.value); setFieldErrors((current) => ({ ...current, confirmation: '' })) }} required error={fieldErrors.confirmation} />
         {owner && <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-900">Owner registrations are reviewed by an administrator. You can check your approval status after registration.</p>}
         <button className={`${primaryButtonClass} mt-1 w-full`} disabled={busy}>{busy ? 'Creating account…' : owner ? 'Submit registration request' : 'Create account'}</button>
       </form>
@@ -172,6 +187,8 @@ export function LoginPage({ admin = false, owner = false }: { admin?: boolean; o
   const { authUser, profile, loading, profileError } = useAuth()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [passwordError, setPasswordError] = useState('')
   const [logoutError, setLogoutError] = useState('')
   if (loading && authUser) return <Spinner />
   if (authUser && profileError) {
@@ -193,8 +210,11 @@ export function LoginPage({ admin = false, owner = false }: { admin?: boolean; o
     const data = new FormData(event.currentTarget)
     const email = String(data.get('email') || '').trim()
     const password = String(data.get('password') || '')
-    if (!emailPattern.test(email) || !password) return setError('Enter a valid email and password.')
     setError('')
+    setEmailError('')
+    setPasswordError('')
+    if (!emailPattern.test(email)) return setEmailError('Enter a valid email address.')
+    if (!password) return setPasswordError('Enter your password.')
     setBusy(true)
     try {
       if (admin) await loginAsAdmin(email, password)
@@ -202,7 +222,14 @@ export function LoginPage({ admin = false, owner = false }: { admin?: boolean; o
       const from = (location.state as { from?: string } | null)?.from
       navigate(admin ? '/admin' : from || '/', { replace: true })
     } catch (issue) {
-      setError(getFirebaseErrorMessage(issue))
+      const code = typeof issue === 'object' && issue && 'code' in issue ? String(issue.code) : ''
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+        setPasswordError(getFirebaseErrorMessage(issue))
+      } else if (code === 'auth/user-not-found' || code === 'auth/invalid-email') {
+        setEmailError(getFirebaseErrorMessage(issue))
+      } else {
+        setError(getFirebaseErrorMessage(issue))
+      }
     } finally {
       setBusy(false)
     }
@@ -212,8 +239,8 @@ export function LoginPage({ admin = false, owner = false }: { admin?: boolean; o
     <AuthCard admin={admin} title={admin ? 'Administrator sign in' : 'Welcome back'} description={admin ? 'Sign in with an administrator account provisioned by your platform administrator.' : 'Sign in to continue to your Boardmate account.'}>
       <form className="grid gap-4" onSubmit={submit}>
         {error && <Alert>{error}</Alert>}
-        <Field name="email" label="Email address" type="email" autoComplete="email" required />
-        <Field name="password" label="Password" type="password" autoComplete="current-password" required />
+        <Field name="email" label="Email address" type="email" autoComplete="email" required error={emailError} onChange={() => setEmailError('')} />
+        <Field name="password" label="Password" type="password" autoComplete="current-password" required error={passwordError} onChange={() => setPasswordError('')} />
         {!admin && <div className="text-right"><Link to="/forgot-password" className="text-sm font-semibold text-[#183b63] hover:underline">Forgot password?</Link></div>}
         <button className={`${primaryButtonClass} w-full`} disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
       </form>
