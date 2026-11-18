@@ -212,6 +212,68 @@ service cloud.firestore {
       allow get, list: if isAdmin() || bookingStudent() || bookingOwner();
     }
 
+    match /reviews/{reviewId} {
+      function activeStudent() {
+        return signedIn()
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus == 'active';
+      }
+
+      function approvedProperty(propertyId) {
+        return get(/databases/$(database)/documents/properties/$(propertyId)).data.approvalStatus == 'approved';
+      }
+
+      function verifiedReviewBooking(data) {
+        let bookingPath = /databases/$(database)/documents/bookings/$(data.bookingId);
+        return exists(bookingPath)
+          && get(bookingPath).data.studentId == request.auth.uid
+          && get(bookingPath).data.propertyId == data.propertyId
+          && get(bookingPath).data.bookingStatus == 'completed'
+          && get(bookingPath).data.paymentConfirmed == true;
+      }
+
+      function validReviewContent(data) {
+        return data.rating is int
+          && data.rating >= 1
+          && data.rating <= 5
+          && data.comment is string
+          && data.comment.size() >= 10
+          && data.comment.size() <= 1000
+          && data.studentName is string
+          && data.studentName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.fullName;
+      }
+
+      allow get, list: if signedIn() && approvedProperty(resource.data.propertyId);
+
+      allow create: if activeStudent()
+        && request.resource.data.keys().hasOnly([
+          'propertyId', 'studentId', 'studentName', 'bookingId',
+          'rating', 'comment', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.propertyId is string
+        && request.resource.data.studentId == request.auth.uid
+        && reviewId == request.resource.data.propertyId + '_' + request.auth.uid
+        && approvedProperty(request.resource.data.propertyId)
+        && verifiedReviewBooking(request.resource.data)
+        && validReviewContent(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if activeStudent()
+        && resource.data.studentId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['bookingId', 'studentName', 'rating', 'comment', 'updatedAt'])
+        && request.resource.data.propertyId == resource.data.propertyId
+        && request.resource.data.studentId == resource.data.studentId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && approvedProperty(resource.data.propertyId)
+        && verifiedReviewBooking(request.resource.data)
+        && validReviewContent(request.resource.data)
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
     match /notifications/{notificationId} {
       allow create: if signedIn()
         && request.resource.data.recipientId is string
