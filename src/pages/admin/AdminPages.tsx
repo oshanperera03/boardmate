@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Check, Clock3, Eye, ShieldAlert, Users, X } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { Alert, Field, PageTitle, primaryButtonClass, secondaryButtonClass, Spinner, StatusPill } from '../../components/common/UI'
+import { getPendingFeaturedListings } from '../../services/featuredListings/featuredListingService'
 import { getPendingProperties, reviewProperty } from '../../services/properties/propertyService'
 import { getAllUsers, getOwner, getOwners, getPendingOwners, reviewOwner, suspendOwner } from '../../services/users/userService'
 import type { PropertyDocument } from '../../types/property'
@@ -32,11 +33,15 @@ function ActivityList({ users }: { users: UserProfile[] }) {
 
 export function AdminDashboard() {
   const [users, setUsers] = useState<UserProfile[]>([])
+  const [featuredPaymentCount, setFeaturedPaymentCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     getAllUsers().then(setUsers).catch((issue: unknown) => setError(getFirebaseErrorMessage(issue))).finally(() => setLoading(false))
+    getPendingFeaturedListings()
+      .then((requests) => setFeaturedPaymentCount(requests.length))
+      .catch((issue: unknown) => setError(getFirebaseErrorMessage(issue)))
   }, [])
 
   if (loading) return <Spinner label="Loading administrator overview" />
@@ -55,7 +60,7 @@ export function AdminDashboard() {
 
   return (
     <>
-      <PageTitle eyebrow="Administrator workspace" title="Platform overview" description="Monitor registrations and review boarding owner account requests." action={<Link to="/admin/requests" className={primaryButtonClass}>Review requests <Clock3 size={16} /></Link>} />
+      <PageTitle eyebrow="Administrator workspace" title="Platform overview" description="Monitor registrations and review boarding owner account requests." action={<div className="flex flex-wrap gap-2"><Link to="/admin/featured-listings" className={secondaryButtonClass}>Featured payments ({featuredPaymentCount})</Link><Link to="/admin/requests" className={primaryButtonClass}>Review requests <Clock3 size={16} /></Link></div>} />
       {error && <div className="mb-5"><Alert>{error}</Alert></div>}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {stats.map(({ label, value, icon: Icon, tone, detail }) => (

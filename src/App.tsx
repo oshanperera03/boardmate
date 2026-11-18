@@ -12,6 +12,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/public/PublicPages').then(
 const AdminDashboard = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.AdminDashboard })))
 const OwnerRequestsPage = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.OwnerRequestsPage })))
 const PropertyRequestsPage = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.PropertyRequestsPage })))
+const FeaturedListingApprovalsPage = lazy(() => import('./pages/admin/FeaturedListingApprovalsPage').then((module) => ({ default: module.FeaturedListingApprovalsPage })))
 const OwnerDetailsPage = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.OwnerDetailsPage })))
 const RegisteredUsersPage = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.RegisteredUsersPage })))
 const OwnersListPage = lazy(() => import('./pages/admin/AdminPages').then((module) => ({ default: module.OwnersListPage })))
@@ -27,6 +28,7 @@ const OwnerDashboard = lazy(() => import('./pages/owner/OwnerPages').then((modul
 const OwnerPendingPage = lazy(() => import('./pages/owner/OwnerPages').then((module) => ({ default: module.OwnerPendingPage })))
 const OwnerStatusPage = lazy(() => import('./pages/owner/OwnerPages').then((module) => ({ default: module.OwnerStatusPage })))
 const OwnerPropertiesPage = lazy(() => import('./pages/owner/OwnerPages').then((module) => ({ default: module.OwnerPropertiesPage })))
+const FeaturedListingPage = lazy(() => import('./pages/owner/FeaturedListingPage').then((module) => ({ default: module.FeaturedListingPage })))
 const OwnerPropertyFormPage = lazy(() => import('./pages/owner/OwnerPages').then((module) => ({ default: module.OwnerPropertyFormPage })))
 const OwnerRoomsPage = lazy(() => import('./pages/owner/RoomPages').then((module) => ({ default: module.OwnerRoomsPage })))
 const RoomFormPage = lazy(() => import('./pages/owner/RoomPages').then((module) => ({ default: module.RoomFormPage })))
@@ -85,6 +87,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/owner" element={<OwnerDashboard />} />
           <Route path="/owner/properties" element={<OwnerPropertiesPage />} />
+          <Route path="/owner/featured" element={<FeaturedListingPage />} />
           <Route path="/owner/properties/new" element={<OwnerPropertyFormPage />} />
           <Route path="/owner/rooms" element={<OwnerRoomsPage />} />
           <Route path="/owner/rooms/new" element={<RoomFormPage />} />
@@ -101,6 +104,7 @@ export default function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/requests" element={<OwnerRequestsPage />} />
           <Route path="/admin/properties" element={<PropertyRequestsPage />} />
+          <Route path="/admin/featured-listings" element={<FeaturedListingApprovalsPage />} />
           <Route path="/admin/owners/:uid" element={<OwnerDetailsPage />} />
           <Route path="/admin/users" element={<RegisteredUsersPage />} />
           <Route path="/admin/approved" element={<OwnersListPage status="approved" />} />

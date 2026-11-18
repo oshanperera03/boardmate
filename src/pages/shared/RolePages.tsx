@@ -272,6 +272,14 @@ export function OwnerDashboard() {
         </div>
       </section>
 
+      <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-100 bg-white p-6 sm:p-7">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700"><Sparkles size={19} /></span>
+          <div><h2 className="font-bold text-slate-900">Get your room seen first</h2><p className="mt-1 text-sm text-slate-500">Upgrade a room to Pro for LKR 200 and feature it in student search for 30 days.</p></div>
+        </div>
+        <Link to="/owner/featured" className={primaryButtonClass}>View Pro upgrade</Link>
+      </section>
+
       <div className="mt-6 rounded-2xl border border-emerald-100 bg-white p-6 sm:p-9">
         <div className="flex max-w-2xl items-start gap-4">
           <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><BadgeCheck size={24} /></span>

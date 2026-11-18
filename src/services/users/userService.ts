@@ -11,8 +11,7 @@ import {
   where,
   type DocumentData,
 } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../firebase/config'
+import { db, app } from '../firebase/config'
 import type { UserProfile } from '../../types/user'
 
 const usersCollection = collection(db, 'users')
@@ -81,11 +80,11 @@ export async function reviewOwner(
   })
 }
 
-const suspendOwnerCall = httpsCallable<{ uid: string }, { success: boolean }>(
-  functions,
-  'suspendOwner',
-)
-
 export async function suspendOwner(uid: string): Promise<void> {
+  const { getFunctions, httpsCallable } = await import('firebase/functions')
+  const suspendOwnerCall = httpsCallable<{ uid: string }, { success: boolean }>(
+    getFunctions(app),
+    'suspendOwner',
+  )
   await suspendOwnerCall({ uid })
 }

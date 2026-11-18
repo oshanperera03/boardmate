@@ -178,7 +178,6 @@ export function OwnerBookingsPage() {
   }, [profile?.uid])
 
   async function handleAccept(booking: BookingDocument) {
-    if (!window.confirm(`Accept this request for ${booking.numberOfOccupants} occupant(s)?`)) return
     try {
       await acceptBooking(booking.id!)
       setMessage('The booking has been accepted.')
@@ -201,7 +200,6 @@ export function OwnerBookingsPage() {
   }
 
   async function handleConfirmPayment(booking: BookingDocument) {
-    if (!window.confirm('Confirm that payment was made and mark this booking as occupied?')) return
     try {
       await confirmPaymentAndOccupancy(booking.id!)
       setMessage('Payment confirmed. The room occupancy has been updated.')

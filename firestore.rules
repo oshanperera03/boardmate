@@ -304,6 +304,92 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
     }
 
+    match /featuredListings/{roomId} {
+      function approvedOwner() {
+        return signedIn()
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner'
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approvalStatus == 'approved'
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus == 'active';
+      }
+
+      function ownsRoom() {
+        let roomPath = /databases/$(database)/documents/rooms/$(roomId);
+        return exists(roomPath)
+          && get(roomPath).data.ownerId == request.auth.uid;
+      }
+
+      function validOwnerSubmission() {
+        let roomPath = /databases/$(database)/documents/rooms/$(roomId);
+        let propertyPath = /databases/$(database)/documents/properties/$(request.resource.data.propertyId);
+        return request.resource.data.keys().hasAll([
+            'roomId', 'propertyId', 'ownerId', 'status', 'paymentMarkedAt',
+            'approvedAt', 'expiresAt', 'rejectionReason'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'roomId', 'propertyId', 'ownerId', 'status', 'paymentMarkedAt',
+            'approvedAt', 'expiresAt', 'rejectionReason'
+          ])
+          && request.resource.data.roomId == roomId
+          && request.resource.data.ownerId == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && request.resource.data.paymentMarkedAt == request.time
+          && request.resource.data.approvedAt == null
+          && request.resource.data.expiresAt == null
+          && request.resource.data.rejectionReason == null
+          && exists(roomPath)
+          && get(roomPath).data.ownerId == request.auth.uid
+          && get(roomPath).data.isActive == true
+          && get(roomPath).data.availableSpaces > 0
+          && exists(propertyPath)
+          && get(propertyPath).data.ownerId == request.auth.uid
+          && get(propertyPath).data.approvalStatus == 'approved';
+      }
+
+      allow create: if approvedOwner() && validOwnerSubmission();
+
+      allow update: if (
+          isAdmin()
+          && resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'approvedAt', 'expiresAt', 'rejectionReason'])
+          && request.resource.data.roomId == resource.data.roomId
+          && request.resource.data.propertyId == resource.data.propertyId
+          && request.resource.data.ownerId == resource.data.ownerId
+          && request.resource.data.paymentMarkedAt == resource.data.paymentMarkedAt
+          && request.resource.data.status in ['approved', 'rejected']
+          && (request.resource.data.status == 'approved'
+            ? request.resource.data.approvedAt == request.time
+              && request.resource.data.expiresAt is timestamp
+              && request.resource.data.expiresAt > request.time
+              && request.resource.data.rejectionReason == null
+            : request.resource.data.approvedAt == null
+              && request.resource.data.expiresAt == null
+              && request.resource.data.rejectionReason is string
+              && request.resource.data.rejectionReason.size() > 0)
+        )
+        || (
+          approvedOwner()
+          && resource.data.ownerId == request.auth.uid
+          && (resource.data.status == 'rejected'
+            || (resource.data.status == 'approved' && resource.data.expiresAt <= request.time))
+          && request.resource.data.roomId == resource.data.roomId
+          && request.resource.data.propertyId == resource.data.propertyId
+          && request.resource.data.ownerId == resource.data.ownerId
+          && validOwnerSubmission()
+        );
+
+      allow get: if isAdmin()
+        || (resource == null && approvedOwner() && ownsRoom())
+        || (resource != null && signedIn()
+          && (resource.data.ownerId == request.auth.uid || resource.data.status == 'approved'));
+
+      allow list: if isAdmin()
+        || (signedIn() && resource.data.ownerId == request.auth.uid)
+        || (signedIn() && resource.data.status == 'approved');
+
+      allow delete: if false;
+    }
+
     match /boardings/{boardingId} {
       allow read: if isAdmin()
         || (signedIn() && resource.data.status == 'published');

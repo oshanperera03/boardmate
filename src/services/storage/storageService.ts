@@ -1,5 +1,5 @@
 import { ref, uploadBytesResumable, getDownloadURL, type UploadTaskSnapshot } from 'firebase/storage'
-import { storage } from '../firebase/config'
+import { storage } from '../firebase/storageConfig'
 
 export type ImageUploadProgress = {
   fileName: string

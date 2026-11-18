@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Shield,
+  Sparkles,
   Users,
   X,
 } from 'lucide-react'
@@ -68,6 +69,7 @@ export function AppLayout() {
         { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
         { to: '/admin/requests', label: 'Approval requests', icon: ClipboardList },
         { to: '/admin/properties', label: 'Property approvals', icon: Building2 },
+        { to: '/admin/featured-listings', label: 'Featured listing approvals', icon: Sparkles },
         { to: '/admin/users', label: 'Registered users', icon: Users },
         { to: '/admin/approved', label: 'Approved owners', icon: CheckCircle2 },
         { to: '/admin/rejected', label: 'Rejected owners', icon: Building2 },
@@ -79,6 +81,7 @@ export function AppLayout() {
           { to: '/owner/properties/new', label: 'Add New Property', icon: Building2 },
           { to: '/owner/properties', label: 'My Properties', icon: ClipboardList },
           { to: '/owner/rooms', label: 'Room management', icon: Building2 },
+          { to: '/owner/featured', label: 'Promote a room', icon: Sparkles },
           { to: '/owner/bookings', label: 'Booking management', icon: ClipboardList },
           { to: '/owner/notifications', label: 'Notifications', icon: Bell },
           { to: '/owner/profile', label: 'Profile', icon: CircleUserRound },

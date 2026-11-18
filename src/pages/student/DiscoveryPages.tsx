@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ArrowRight, Building2, Filter, MapPin, Search, Star } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
-import { Alert, Field, PageTitle, primaryButtonClass, secondaryButtonClass, Spinner, StatusPill } from '../../components/common/UI'
+import { Alert, PageTitle, primaryButtonClass, secondaryButtonClass, Spinner, StatusPill } from '../../components/common/UI'
 import { useAuth } from '../../contexts/AuthContext'
 import { getStudentBookings } from '../../services/bookings/bookingService'
 import { getAvailableRooms, getAvailableRoomsForProperty, getDiscoverableProperties, getDiscoverableProperty } from '../../services/discovery/discoveryService'
+import { getFeaturedRoomIds } from '../../services/featuredListings/featuredListingService'
 import { getPropertyReviews, savePropertyReview } from '../../services/reviews/reviewService'
 import type { PropertyReview } from '../../types/review'
 import type { BookingDocument } from '../../types/booking'
@@ -22,6 +23,11 @@ const campuses = [
   { value: 'University of Sri Jayewardenepura', label: 'University of Sri Jayewardenepura', latitude: 6.8528, longitude: 79.9071 },
   { value: 'University of Peradeniya', label: 'University of Peradeniya', latitude: 7.2547, longitude: 80.5974 },
   { value: 'University of Ruhuna', label: 'University of Ruhuna', latitude: 5.941, longitude: 80.576 },
+]
+
+const campusOptions = [
+  { value: 'SLIIT Malabe', label: 'SLIIT Malabe' },
+  { value: 'CINEC Campus', label: 'CINEC Campus' },
 ]
 
 const priceRanges = [
@@ -126,14 +132,13 @@ export function StudentSearchPage() {
   const { profile } = useAuth()
   const [properties, setProperties] = useState<PropertyDocument[]>([])
   const [rooms, setRooms] = useState<RoomDocument[]>([])
+  const [featuredRoomIds, setFeaturedRoomIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [campus, setCampus] = useState('')
   const [gender, setGender] = useState<GenderFilter>('all')
   const [priceRange, setPriceRange] = useState('')
-  const [minimumPrice, setMinimumPrice] = useState('')
-  const [maximumPrice, setMaximumPrice] = useState('')
   const [roomType, setRoomType] = useState('')
   const [availability, setAvailability] = useState<AvailabilityFilter>('all')
   const [distance, setDistance] = useState<DistanceFilter>('any')
@@ -141,27 +146,37 @@ export function StudentSearchPage() {
 
   useEffect(() => {
     if (!profile?.uid) return
-    void Promise.all([getDiscoverableProperties(), getAvailableRooms()])
-      .then(([propertyItems, roomItems]) => {
+    void Promise.all([getDiscoverableProperties(), getAvailableRooms(), getFeaturedRoomIds()])
+      .then(([propertyItems, roomItems, featuredIds]) => {
         setProperties(propertyItems)
         setRooms(roomItems)
+        setFeaturedRoomIds(featuredIds)
       })
       .catch((issue: unknown) => setError(getFirebaseErrorMessage(issue)))
       .finally(() => setLoading(false))
   }, [profile?.uid])
 
+  const featuredRoomIdSet = useMemo(() => new Set(featuredRoomIds), [featuredRoomIds])
+
   const results = useMemo(() => {
     const selectedRange = priceRanges.find((range) => range.value === priceRange)
-    const minimum = minimumPrice === '' ? selectedRange?.min ?? 0 : Number(minimumPrice)
-    const maximum = maximumPrice === '' ? selectedRange?.max ?? Number.POSITIVE_INFINITY : Number(maximumPrice)
+    const minimum = selectedRange?.min ?? 0
+    const maximum = selectedRange?.max ?? Number.POSITIVE_INFINITY
     const normalizedSearch = search.trim().toLowerCase()
+    const roomsByPropertyId = new Map<string, RoomDocument[]>()
+    for (const room of rooms) {
+      const propertyRooms = roomsByPropertyId.get(room.propertyId) || []
+      propertyRooms.push(room)
+      roomsByPropertyId.set(room.propertyId, propertyRooms)
+    }
+
     return properties.map((property) => {
-      const propertyRooms = rooms.filter((room) => room.propertyId === property.id)
+      const propertyRooms = roomsByPropertyId.get(property.id || '') || []
       const matchingRooms = propertyRooms.filter((room) => {
         const searchable = `${property.propertyName} ${property.location.city} ${property.location.district} ${property.location.address} ${property.location.nearbyCampus}`.toLowerCase()
-        const campusMatches = !campus || (campus === 'Other' ? !campuses.some((item) => property.location.nearbyCampus.toLowerCase().includes(item.value.toLowerCase())) : property.location.nearbyCampus.toLowerCase().includes(campus.toLowerCase()))
+        const campusMatches = !campus || property.location.nearbyCampus.toLowerCase().includes(campus.toLowerCase())
         const selectedDistance = distanceFor(property, campus)
-        const distanceMatches = distance === 'any' || (selectedDistance !== null && selectedDistance <= Number(distance))
+        const distanceMatches = distance === 'any' || selectedDistance === null || selectedDistance <= Number(distance)
         return (!normalizedSearch || searchable.includes(normalizedSearch))
           && campusMatches
           && roomMatchesGender(room, property, gender)
@@ -171,10 +186,16 @@ export function StudentSearchPage() {
           && (availability === 'all' || room.availabilityStatus === availability)
           && distanceMatches
           && selectedFacilities.every((facility) => roomHasFacility(room, property, facility))
-      })
+      }).sort((first, second) =>
+        Number(featuredRoomIdSet.has(second.id || '')) - Number(featuredRoomIdSet.has(first.id || '')),
+      )
       return { property, rooms: matchingRooms, distance: distanceFor(property, campus) }
     }).filter((result) => result.rooms.length > 0)
-  }, [availability, campus, distance, gender, maximumPrice, minimumPrice, priceRange, properties, roomType, rooms, search, selectedFacilities])
+      .sort((first, second) =>
+        Number(second.rooms.some((room) => featuredRoomIdSet.has(room.id || '')))
+        - Number(first.rooms.some((room) => featuredRoomIdSet.has(room.id || ''))),
+      )
+  }, [availability, campus, distance, featuredRoomIdSet, gender, priceRange, properties, roomType, rooms, search, selectedFacilities])
 
   function toggleFacility(facility: FacilityFilter) {
     setSelectedFacilities((current) => current.includes(facility) ? current.filter((item) => item !== facility) : [...current, facility])
@@ -190,10 +211,9 @@ export function StudentSearchPage() {
           <div className="flex items-center gap-2 font-bold text-slate-900"><Filter size={17} /> Filters</div>
           <div className="mt-5 grid gap-4">
             <div className="relative"><Search className="absolute left-3 top-3 size-4 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search property or location" className="h-10 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm outline-none focus:border-blue-500" /></div>
-            <label className="grid gap-1.5 text-sm font-semibold text-slate-700">Campus<select value={campus} onChange={(event) => setCampus(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-2 font-normal"><option value="">All campuses</option>{campuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}<option value="Other">Other</option></select></label>
+            <label className="grid gap-1.5 text-sm font-semibold text-slate-700">Campus<select value={campus} onChange={(event) => setCampus(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-2 font-normal"><option value="">All campuses</option>{campusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
             <label className="grid gap-1.5 text-sm font-semibold text-slate-700">Gender policy<select value={gender} onChange={(event) => setGender(event.target.value as GenderFilter)} className="h-10 rounded-lg border border-slate-200 px-2 font-normal"><option value="all">All</option><option value="boys">Boys only</option><option value="girls">Girls only</option><option value="mixed">Mixed</option></select></label>
-            <label className="grid gap-1.5 text-sm font-semibold text-slate-700">Price range<select value={priceRange} onChange={(event) => { setPriceRange(event.target.value); setMinimumPrice(''); setMaximumPrice('') }} className="h-10 rounded-lg border border-slate-200 px-2 font-normal"><option value="">Any price</option>{priceRanges.map((range) => <option key={range.value} value={range.value}>{range.label}</option>)}</select></label>
-            <div className="grid grid-cols-2 gap-2"><Field label="Min LKR" type="number" min="0" value={minimumPrice} onChange={(event) => { setMinimumPrice(event.target.value); setPriceRange('') }} /><Field label="Max LKR" type="number" min="0" value={maximumPrice} onChange={(event) => { setMaximumPrice(event.target.value); setPriceRange('') }} /></div>
+            <label className="grid gap-1.5 text-sm font-semibold text-slate-700">Price range<select value={priceRange} onChange={(event) => setPriceRange(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-2 font-normal"><option value="">Any price</option>{priceRanges.map((range) => <option key={range.value} value={range.value}>{range.label}</option>)}</select></label>
             <label className="grid gap-1.5 text-sm font-semibold text-slate-700">Room type<select value={roomType} onChange={(event) => setRoomType(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-2 font-normal"><option value="">All room types</option>{roomTypes.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
             <label className="grid gap-1.5 text-sm font-semibold text-slate-700">Availability<select value={availability} onChange={(event) => setAvailability(event.target.value as AvailabilityFilter)} className="h-10 rounded-lg border border-slate-200 px-2 font-normal"><option value="all">Any available space</option><option value="available">Fully available</option><option value="partially_available">Partially available</option></select></label>
             <label className="grid gap-1.5 text-sm font-semibold text-slate-700">Distance from campus<select value={distance} onChange={(event) => setDistance(event.target.value as DistanceFilter)} className="h-10 rounded-lg border border-slate-200 px-2 font-normal"><option value="any">Any distance</option><option value="1">Within 1 km</option><option value="3">Within 3 km</option><option value="5">Within 5 km</option><option value="10">Within 10 km</option></select></label>
@@ -202,7 +222,66 @@ export function StudentSearchPage() {
         </aside>
         <main>
           <div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm text-slate-500">{loading ? 'Loading properties…' : `${results.length} ${results.length === 1 ? 'property' : 'properties'} found`}</p>{campus && <span className="text-xs text-slate-400">Distance is shown when coordinates are available</span>}</div>
-          {loading ? <div className="grid gap-4 sm:grid-cols-2"><div className="h-72 animate-pulse rounded-2xl bg-slate-200" /><div className="h-72 animate-pulse rounded-2xl bg-slate-200" /></div> : results.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center"><Building2 className="mx-auto text-slate-400" size={32} /><h2 className="mt-4 text-xl font-bold text-slate-900">No matching boarding places</h2><p className="mt-2 text-sm text-slate-500">Try widening your search or removing one of the filters.</p></div> : <div className="grid gap-5 sm:grid-cols-2">{results.map(({ property, rooms: matchingRooms, distance: propertyDistance }) => { const lowestPrice = Math.min(...matchingRooms.map((room) => room.monthlyPrice)); const spaces = matchingRooms.reduce((total, room) => total + room.availableSpaces, 0); return <article key={property.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><PropertyPlaceholder /><div className="p-5"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-bold text-slate-900">{property.propertyName}</h2><p className="mt-1 flex items-center gap-1 text-sm text-slate-500"><MapPin size={14} /> {property.location.city}, {property.location.district}</p></div><StatusPill tone="green">Verified</StatusPill></div><p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{property.description}</p><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-slate-500">From</p><p className="mt-1 font-semibold">{formatPrice(lowestPrice)}</p></div><div><p className="text-xs text-slate-500">Available spaces</p><p className="mt-1 font-semibold text-emerald-700">{spaces}</p></div><div><p className="text-xs text-slate-500">Campus</p><p className="mt-1 font-semibold">{property.location.nearbyCampus || 'Not specified'}</p></div><div><p className="text-xs text-slate-500">Distance</p><p className="mt-1 font-semibold">{propertyDistance === null ? 'Not available' : `${propertyDistance.toFixed(1)} km`}</p></div></div><div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4"><span className="text-xs capitalize text-slate-500">{property.genderPolicy} · {matchingRooms.length} room{matchingRooms.length === 1 ? '' : 's'}</span><Link to={`/student/properties/${property.id}`} className={`${secondaryButtonClass} min-h-9 px-3 text-xs`}>Details &amp; reviews <ArrowRight size={14} /></Link></div></div></article> })}</div>}
+          {loading ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="h-72 animate-pulse rounded-2xl bg-slate-200" />
+              <div className="h-72 animate-pulse rounded-2xl bg-slate-200" />
+            </div>
+          ) : results.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+              <Building2 className="mx-auto text-slate-400" size={32} />
+              <h2 className="mt-4 text-xl font-bold text-slate-900">No matching boarding places</h2>
+              <p className="mt-2 text-sm text-slate-500">Try widening your search or removing one of the filters.</p>
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2">
+              {results.map(({ property, rooms: matchingRooms, distance: propertyDistance }) => {
+                const lowestPrice = Math.min(...matchingRooms.map((room) => room.monthlyPrice))
+                const spaces = matchingRooms.reduce((total, room) => total + room.availableSpaces, 0)
+                return (
+                  <article key={property.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <PropertyPlaceholder />
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h2 className="text-lg font-bold text-slate-900">{property.propertyName}</h2>
+                          <p className="mt-1 flex items-center gap-1 text-sm text-slate-500"><MapPin size={14} /> {property.location.city}, {property.location.district}</p>
+                        </div>
+                        <StatusPill tone="green">Verified</StatusPill>
+                      </div>
+                      <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{property.description}</p>
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div><p className="text-xs text-slate-500">From</p><p className="mt-1 font-semibold">{formatPrice(lowestPrice)}</p></div>
+                        <div><p className="text-xs text-slate-500">Available spaces</p><p className="mt-1 font-semibold text-emerald-700">{spaces}</p></div>
+                        <div><p className="text-xs text-slate-500">Campus</p><p className="mt-1 font-semibold">{property.location.nearbyCampus || 'Not specified'}</p></div>
+                        <div><p className="text-xs text-slate-500">Distance</p><p className="mt-1 font-semibold">{propertyDistance === null ? 'Not available' : `${propertyDistance.toFixed(1)} km`}</p></div>
+                      </div>
+                      <div className="mt-4 divide-y divide-slate-100 border-t border-slate-100">
+                        {matchingRooms.map((room) => (
+                          <div key={room.id} className="py-3 first:pt-4 last:pb-0">
+                            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                              <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800">
+                                {room.roomName} · {roomTypeLabel(room.roomType)}
+                                {featuredRoomIdSet.has(room.id || '') && <StatusPill tone="blue">Pro · Featured</StatusPill>}
+                              </span>
+                              <span className="text-sm font-semibold text-slate-700">{formatPrice(room.monthlyPrice)} per month</span>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {room.availableSpaces} space{room.availableSpaces === 1 ? '' : 's'} available · Last updated: {formatRoomTimestamp(room)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                        <span className="text-xs capitalize text-slate-500">{property.genderPolicy} · {matchingRooms.length} room{matchingRooms.length === 1 ? '' : 's'}</span>
+                        <Link to={`/student/properties/${property.id}`} className={`${secondaryButtonClass} min-h-9 px-3 text-xs`}>Details &amp; reviews <ArrowRight size={14} /></Link>
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          )}
         </main>
       </div>
     </>
