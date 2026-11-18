@@ -18,17 +18,22 @@ export interface BookingDocument {
   studentMessage: string
   bookingStatus: BookingStatus
   rejectionReason: string | null
+  paymentConfirmed?: boolean
+  occupancyConfirmedAt?: Timestamp | null
   createdAt: Timestamp | null
   updatedAt: Timestamp | null
 }
 
 export interface NotificationDocument {
   id?: string
-  userId: string
+  recipientId?: string
+  userId?: string
   title: string
   message: string
   type: string
-  relatedBookingId: string
+  bookingId?: string | null
+  relatedBookingId?: string | null
+  propertyId?: string | null
   isRead: boolean
   createdAt: Timestamp | null
 }

@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, onSnapshot, orderBy, query, runTransaction, serverTimestamp, updateDoc, where, type DocumentData, type Unsubscribe } from 'firebase/firestore'
+import { collection, doc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, startAfter, updateDoc, where, writeBatch, type DocumentData, type DocumentSnapshot, type Unsubscribe } from 'firebase/firestore'
 import { auth, db } from '../firebase/config'
 import type { BookingDocument, NotificationDocument } from '../../types/booking'
 
@@ -11,6 +11,10 @@ function toBooking(entry: DocumentData, id: string): BookingDocument {
 
 function toNotification(entry: DocumentData, id: string): NotificationDocument {
   return { id, ...(entry as NotificationDocument) }
+}
+
+function createNotificationRef(type: string, bookingId: string): ReturnType<typeof doc> {
+  return doc(db, 'notifications', `${type}_${bookingId}`)
 }
 
 export async function submitBookingRequest(input: {
@@ -75,8 +79,20 @@ export async function submitBookingRequest(input: {
       studentMessage: input.studentMessage.trim(),
       bookingStatus: 'pending',
       rejectionReason: null,
+      paymentConfirmed: false,
+      occupancyConfirmedAt: null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+    })
+    transaction.set(createNotificationRef('booking_request', bookingRef.id), {
+      recipientId: property.ownerId,
+      title: 'New Booking Request',
+      message: `${studentSnapshot.data().fullName || 'A student'} requested ${room.roomName || 'a room'}.`,
+      type: 'booking_request',
+      bookingId: bookingRef.id,
+      propertyId: input.propertyId,
+      isRead: false,
+      createdAt: serverTimestamp(),
     })
   })
   return { success: true, bookingId }
@@ -116,16 +132,87 @@ export async function acceptBooking(bookingId: string) {
     }
     const room = roomSnapshot.data()
     const requested = Number(booking.numberOfOccupants)
+    const available = Number(room.availableSpaces)
+    if (!Number.isInteger(requested) || requested < 1 || requested > available) {
+      throw new Error('The room no longer has enough available spaces.')
+    }
+    transaction.update(bookingRef, {
+      bookingStatus: 'accepted',
+      rejectionReason: null,
+      updatedAt: serverTimestamp(),
+    })
+    transaction.set(createNotificationRef('booking_accepted', bookingId), {
+      recipientId: booking.studentId,
+      title: 'Booking Accepted',
+      message: 'Your booking request has been accepted.',
+      type: 'booking_accepted',
+      bookingId,
+      propertyId: booking.propertyId,
+      isRead: false,
+      createdAt: serverTimestamp(),
+    })
+  })
+}
+
+export async function confirmPaymentAndOccupancy(bookingId: string) {
+  const ownerId = auth.currentUser?.uid
+  if (!ownerId) throw new Error('Please sign in again.')
+  await runTransaction(db, async (transaction) => {
+    const bookingRef = doc(db, 'bookings', bookingId)
+    const bookingSnapshot = await transaction.get(bookingRef)
+    if (!bookingSnapshot.exists()) throw new Error('Booking not found.')
+
+    const booking = bookingSnapshot.data()
+    if (booking.ownerId !== ownerId) throw new Error('This booking belongs to another owner.')
+    if (booking.bookingStatus !== 'accepted') throw new Error('Only accepted bookings can be confirmed.')
+    if (booking.paymentConfirmed === true) {
+      transaction.update(bookingRef, {
+        bookingStatus: 'completed',
+        updatedAt: serverTimestamp(),
+      })
+      return
+    }
+
+    const [ownerSnapshot, propertySnapshot, roomSnapshot] = await Promise.all([
+      transaction.get(doc(db, 'users', ownerId)),
+      transaction.get(doc(db, 'properties', booking.propertyId)),
+      transaction.get(doc(db, 'rooms', booking.roomId)),
+    ])
+    if (!ownerSnapshot.exists()
+      || ownerSnapshot.data().role !== 'owner'
+      || ownerSnapshot.data().approvalStatus !== 'approved'
+      || ownerSnapshot.data().accountStatus !== 'active') {
+      throw new Error('The owner account cannot manage bookings.')
+    }
+    if (!propertySnapshot.exists() || propertySnapshot.data().ownerId !== ownerId) {
+      throw new Error('This property belongs to another owner.')
+    }
+    if (!roomSnapshot.exists()
+      || roomSnapshot.data().ownerId !== ownerId
+      || roomSnapshot.data().propertyId !== booking.propertyId
+      || roomSnapshot.data().isActive !== true
+      || roomSnapshot.data().availabilityStatus === 'temporarily_unavailable') {
+      throw new Error('The room is no longer available.')
+    }
+
+    const room = roomSnapshot.data()
+    const requested = Number(booking.numberOfOccupants)
     const maximum = Number(room.maximumOccupants)
     const current = Number(room.currentOccupants)
     const available = Number(room.availableSpaces)
     if (!Number.isInteger(requested) || requested < 1 || requested > available) {
       throw new Error('The room no longer has enough available spaces.')
     }
+
     const newCurrent = current + requested
     const newAvailable = maximum - newCurrent
     if (newAvailable < 0) throw new Error('The room cannot exceed its capacity.')
-    const roomStatus = newAvailable === 0 ? 'occupied' : newCurrent === 0 ? 'available' : 'partially_available'
+
+    const roomStatus = newAvailable === 0
+      ? 'occupied'
+      : newCurrent === 0
+        ? 'available'
+        : 'partially_available'
 
     transaction.update(doc(db, 'rooms', booking.roomId), {
       currentOccupants: newCurrent,
@@ -134,8 +221,9 @@ export async function acceptBooking(bookingId: string) {
       updatedAt: serverTimestamp(),
     })
     transaction.update(bookingRef, {
-      bookingStatus: 'accepted',
-      rejectionReason: null,
+      bookingStatus: 'completed',
+      paymentConfirmed: true,
+      occupancyConfirmedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
   })
@@ -156,6 +244,16 @@ export async function rejectBooking(bookingId: string, reason = '') {
       rejectionReason: reason.trim() || null,
       updatedAt: serverTimestamp(),
     })
+    transaction.set(createNotificationRef('booking_rejected', bookingId), {
+      recipientId: bookingSnapshot.data().studentId,
+      title: 'Booking Rejected',
+      message: reason.trim() ? `Your booking was rejected: ${reason.trim()}` : 'Your booking request was rejected.',
+      type: 'booking_rejected',
+      bookingId,
+      propertyId: bookingSnapshot.data().propertyId,
+      isRead: false,
+      createdAt: serverTimestamp(),
+    })
   })
 }
 
@@ -169,6 +267,26 @@ export async function cancelBooking(bookingId: string) {
     if (bookingSnapshot.data().studentId !== studentId) throw new Error('This booking belongs to another student.')
     if (bookingSnapshot.data().bookingStatus !== 'pending') throw new Error('Only pending requests can be cancelled.')
     transaction.update(bookingRef, { bookingStatus: 'cancelled', updatedAt: serverTimestamp() })
+    transaction.set(createNotificationRef('booking_cancelled_owner', bookingId), {
+      recipientId: bookingSnapshot.data().ownerId,
+      title: 'Booking Cancelled',
+      message: 'A student cancelled a pending booking request.',
+      type: 'booking_cancelled',
+      bookingId,
+      propertyId: bookingSnapshot.data().propertyId,
+      isRead: false,
+      createdAt: serverTimestamp(),
+    })
+    transaction.set(createNotificationRef('booking_cancelled_student', bookingId), {
+      recipientId: studentId,
+      title: 'Booking Cancelled',
+      message: 'Your pending booking request was cancelled.',
+      type: 'booking_cancelled',
+      bookingId,
+      propertyId: bookingSnapshot.data().propertyId,
+      isRead: false,
+      createdAt: serverTimestamp(),
+    })
   })
 }
 
@@ -200,7 +318,7 @@ export async function getOwnerBookings(ownerId: string): Promise<BookingDocument
 }
 
 export function subscribeToNotifications(userId: string, callback: (items: NotificationDocument[]) => void): Unsubscribe {
-  const notificationQuery = query(notificationsCollection, where('userId', '==', userId), orderBy('createdAt', 'desc'))
+  const notificationQuery = query(notificationsCollection, where('recipientId', '==', userId), orderBy('createdAt', 'desc'), limit(20))
   return onSnapshot(notificationQuery, (snapshot) => {
     callback(snapshot.docs.map((entry) => toNotification(entry.data(), entry.id)))
   })
@@ -208,4 +326,37 @@ export function subscribeToNotifications(userId: string, callback: (items: Notif
 
 export async function markNotificationRead(notificationId: string) {
   await updateDoc(doc(db, 'notifications', notificationId), { isRead: true })
+}
+
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+  const snapshot = await getDocs(query(notificationsCollection, where('recipientId', '==', userId), where('isRead', '==', false)))
+  if (snapshot.empty) return
+  const batch = writeBatch(db)
+  snapshot.docs.forEach((entry) => batch.update(entry.ref, { isRead: true }))
+  await batch.commit()
+}
+
+export async function getNotificationHistory(
+  userId: string,
+  pageSize = 20,
+  cursor?: DocumentSnapshot,
+): Promise<{ items: NotificationDocument[]; cursor: DocumentSnapshot | null }> {
+  const snapshot = cursor
+    ? await getDocs(query(
+        notificationsCollection,
+        where('recipientId', '==', userId),
+        orderBy('createdAt', 'desc'),
+        startAfter(cursor),
+        limit(pageSize),
+      ))
+    : await getDocs(query(
+        notificationsCollection,
+        where('recipientId', '==', userId),
+        orderBy('createdAt', 'desc'),
+        limit(pageSize),
+      ))
+  return {
+    items: snapshot.docs.map((entry) => toNotification(entry.data(), entry.id)),
+    cursor: snapshot.docs.length ? snapshot.docs[snapshot.docs.length - 1] : null,
+  }
 }

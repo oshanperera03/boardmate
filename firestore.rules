@@ -131,7 +131,24 @@ service cloud.firestore {
         && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.propertyId == resource.data.propertyId
         && ownedProperty(request.resource.data.propertyId)
-        && validRoom(request.resource.data);
+        && (validRoom(request.resource.data)
+          || (request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['currentOccupants', 'availableSpaces', 'availabilityStatus', 'updatedAt'])
+            && request.resource.data.currentOccupants is int
+            && request.resource.data.currentOccupants >= 0
+            && request.resource.data.currentOccupants <= request.resource.data.maximumOccupants
+            && request.resource.data.availableSpaces is int
+            && request.resource.data.availableSpaces
+              == request.resource.data.maximumOccupants - request.resource.data.currentOccupants
+            && request.resource.data.availabilityStatus in ['available', 'partially_available', 'occupied', 'temporarily_unavailable']
+            && (request.resource.data.availabilityStatus == 'temporarily_unavailable'
+              || (request.resource.data.currentOccupants == 0
+                && request.resource.data.availabilityStatus == 'available')
+              || (request.resource.data.currentOccupants > 0
+                && request.resource.data.availableSpaces > 0
+                && request.resource.data.availabilityStatus == 'partially_available')
+              || (request.resource.data.availableSpaces == 0
+                && request.resource.data.availabilityStatus == 'occupied'))));
 
       allow delete: if (isAdmin() && resource.data.currentOccupants == 0)
         || (approvedOwner() && resource.data.ownerId == request.auth.uid && resource.data.currentOccupants == 0);
@@ -162,7 +179,9 @@ service cloud.firestore {
         && request.resource.data.numberOfOccupants is int
         && request.resource.data.numberOfOccupants > 0
         && request.resource.data.bookingStatus == 'pending'
-        && request.resource.data.rejectionReason == null;
+        && request.resource.data.rejectionReason == null
+        && request.resource.data.paymentConfirmed == false
+        && request.resource.data.occupancyConfirmedAt == null;
 
       allow update: if (bookingStudent()
         && resource.data.bookingStatus == 'pending'
@@ -171,18 +190,46 @@ service cloud.firestore {
         || (bookingOwner()
         && resource.data.bookingStatus == 'pending'
         && request.resource.data.bookingStatus in ['accepted', 'rejected', 'expired']
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus', 'rejectionReason', 'updatedAt']));
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus', 'rejectionReason', 'updatedAt']))
+        || (bookingOwner()
+        && resource.data.bookingStatus == 'accepted'
+        && resource.data.paymentConfirmed == true
+        && request.resource.data.bookingStatus == 'completed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus', 'updatedAt']))
+        || (bookingOwner()
+        && resource.data.bookingStatus == 'accepted'
+        && (!('paymentConfirmed' in resource.data) || resource.data.paymentConfirmed != true)
+        && request.resource.data.paymentConfirmed == true
+        && request.resource.data.studentId == resource.data.studentId
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.propertyId == resource.data.propertyId
+        && request.resource.data.roomId == resource.data.roomId
+        && request.resource.data.bookingStatus == 'completed'
+        && request.resource.data.numberOfOccupants == resource.data.numberOfOccupants
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus', 'paymentConfirmed', 'occupancyConfirmedAt', 'updatedAt']));
 
       allow delete: if false;
       allow get, list: if isAdmin() || bookingStudent() || bookingOwner();
     }
 
     match /notifications/{notificationId} {
-      allow create, delete: if false;
-      allow get: if signedIn() && resource.data.userId == request.auth.uid;
-      allow list: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.recipientId is string
+        && request.resource.data.title is string
+        && request.resource.data.message is string
+        && request.resource.data.type in ['booking_request', 'booking_accepted', 'booking_rejected', 'booking_cancelled', 'booking_payment_confirmed']
+        && request.resource.data.bookingId is string
+        && request.resource.data.propertyId is string
+        && request.resource.data.isRead == false
+        && ((get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'
+          && request.resource.data.type in ['booking_request', 'booking_cancelled'])
+          || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner'
+          && request.resource.data.type in ['booking_accepted', 'booking_rejected', 'booking_payment_confirmed']));
+      allow delete: if false;
+      allow get: if signedIn() && (resource.data.recipientId == request.auth.uid || resource.data.userId == request.auth.uid);
+      allow list: if signedIn() && resource.data.recipientId == request.auth.uid;
       allow update: if signedIn()
-        && resource.data.userId == request.auth.uid
+        && (resource.data.recipientId == request.auth.uid || resource.data.userId == request.auth.uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
     }
   }

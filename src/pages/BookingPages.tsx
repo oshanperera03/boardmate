@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   acceptBooking,
   cancelBooking,
+  confirmPaymentAndOccupancy,
   getOwnerBookings,
   getStudentBookings,
   rejectBooking,
@@ -116,6 +117,7 @@ export function StudentBookingsPage() {
               </div>
               {booking.studentMessage && <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{booking.studentMessage}</p>}
               {booking.rejectionReason && <Alert>Reason: {booking.rejectionReason}</Alert>}
+              {booking.bookingStatus === 'completed' && booking.paymentConfirmed && <Alert type="success">Payment confirmed. This room is now occupied for your booking.</Alert>}
               {booking.bookingStatus === 'pending' && <div className="mt-4 flex justify-end"><button type="button" onClick={() => void handleCancel(booking)} className={secondaryButtonClass}>Cancel request</button></div>}
             </article>
           ))}
@@ -188,6 +190,17 @@ export function OwnerBookingsPage() {
     }
   }
 
+  async function handleConfirmPayment(booking: BookingDocument) {
+    if (!window.confirm('Confirm that payment was made and mark this booking as occupied?')) return
+    try {
+      await confirmPaymentAndOccupancy(booking.id!)
+      setMessage('Payment confirmed. The room occupancy has been updated.')
+      await load()
+    } catch (issue) {
+      setError(getFirebaseErrorMessage(issue))
+    }
+  }
+
   const filtered = useMemo(() => {
     if (filter === 'all') return bookings
     if (filter === 'new' || filter === 'pending') return bookings.filter((booking) => booking.bookingStatus === 'pending')
@@ -241,6 +254,8 @@ export function OwnerBookingsPage() {
               {booking.studentMessage && <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{booking.studentMessage}</p>}
               {booking.rejectionReason && <div className="mt-3"><Alert>Reason: {booking.rejectionReason}</Alert></div>}
               {booking.bookingStatus === 'pending' && <div className="mt-4 flex flex-wrap justify-end gap-3"><button type="button" onClick={() => void handleReject(booking)} className={secondaryButtonClass}>Reject</button><button type="button" onClick={() => void handleAccept(booking)} className={primaryButtonClass}><CheckCircle2 size={16} /> Accept request</button></div>}
+              {booking.bookingStatus === 'accepted' && <div className="mt-4 flex justify-end"><button type="button" onClick={() => void handleConfirmPayment(booking)} className={primaryButtonClass}><CheckCircle2 size={16} /> {booking.paymentConfirmed ? 'Finalize as completed' : 'Payment made — confirm occupied'}</button></div>}
+              {booking.bookingStatus === 'completed' && booking.paymentConfirmed && <div className="mt-4"><Alert type="success">Payment confirmed and room occupancy updated.</Alert></div>}
             </article>
           ))}
         </div>

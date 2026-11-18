@@ -19,7 +19,7 @@ import { logout } from '../../services/auth/authService'
 import { useAuth } from '../../contexts/AuthContext'
 import { Alert, Brand } from '../common/UI'
 import { getFirebaseErrorMessage } from '../../utils/validation'
-import { markNotificationRead, subscribeToNotifications } from '../../services/bookings/bookingService'
+import { markAllNotificationsRead, markNotificationRead, subscribeToNotifications } from '../../services/bookings/bookingService'
 import type { NotificationDocument } from '../../types/booking'
 
 const linkStyle = ({ isActive }: { isActive: boolean }) =>
@@ -57,6 +57,7 @@ export function AppLayout() {
           { to: '/owner/properties', label: 'My Properties', icon: ClipboardList },
           { to: '/owner/rooms', label: 'Room management', icon: Building2 },
           { to: '/owner/bookings', label: 'Booking management', icon: ClipboardList },
+          { to: '/owner/notifications', label: 'Notifications', icon: Bell },
           { to: '/owner/profile', label: 'Profile', icon: CircleUserRound },
           { to: '/owner/status', label: 'Account status', icon: Shield },
           ]
@@ -70,6 +71,7 @@ export function AppLayout() {
           { to: '/student', label: 'Dashboard', icon: LayoutDashboard, end: true },
           { to: '/student/search', label: 'Find accommodation', icon: Building2 },
           { to: '/student/bookings', label: 'My bookings', icon: ClipboardList },
+          { to: '/student/notifications', label: 'Notifications', icon: Bell },
           { to: '/student/profile', label: 'My profile', icon: CircleUserRound },
           { to: '/student/settings', label: 'Account settings', icon: Shield },
         ]
@@ -135,13 +137,23 @@ export function AppLayout() {
               </button>
               {notificationsOpen && (
                 <div className="absolute right-0 mt-2 w-[min(340px,calc(100vw-2.5rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-                  <div className="border-b border-slate-100 px-4 py-3 text-sm font-bold text-slate-900">Notifications</div>
+                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                    <span className="text-sm font-bold text-slate-900">Notifications</span>
+                    {notifications.some((notification) => !notification.isRead) && (
+                      <button type="button" onClick={() => { if (profile?.uid) void markAllNotificationsRead(profile.uid) }} className="text-xs font-semibold text-[#183b63]">Mark all read</button>
+                    )}
+                  </div>
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length === 0 ? <p className="p-4 text-sm text-slate-500">No notifications yet.</p> : notifications.slice(0, 10).map((notification) => (
                       <button
                         key={notification.id}
                         type="button"
-                        onClick={() => { if (notification.id && !notification.isRead) void markNotificationRead(notification.id); setNotificationsOpen(false) }}
+                        onClick={() => {
+                          if (notification.id && !notification.isRead) void markNotificationRead(notification.id)
+                          setNotificationsOpen(false)
+                          if (notification.bookingId || notification.relatedBookingId) navigate(role === 'owner' ? '/owner/bookings' : '/student/bookings')
+                          else navigate(role === 'owner' ? '/owner/notifications' : '/student/notifications')
+                        }}
                         className={`block w-full border-b border-slate-100 px-4 py-3 text-left ${notification.isRead ? 'bg-white' : 'bg-blue-50/60'}`}
                       >
                         <p className="text-sm font-semibold text-slate-800">{notification.title}</p>
